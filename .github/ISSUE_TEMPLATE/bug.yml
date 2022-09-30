@@ -17,7 +17,19 @@ body:
       description: What component/project does this related to?
       options:
         - Infrastructure
-        - CI/CD
+        - Platform
+        - ODE
         - Other
     validations:
       required: true
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Specifics
+      description: Select any related subcomponent(s)
+      options:
+        - label: CircleCI
+        - label: Docker or Docker Hub
+        - label: Doxygen
+        - label: GitHub Actions
+        - label: Sonar
