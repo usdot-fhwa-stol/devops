@@ -97,6 +97,9 @@ if __name__ == "__main__":
 
     github_repo = github.get_repo(args.github_repo)
 
+    # Default jira_component
+    jira_component = "Infrastructure"
+
     # Create Jira issue for dependabot GitHub Pull Request
     if args.pull_request_number:
         pull = github_repo.get_pull(args.pull_request_number)
@@ -113,6 +116,20 @@ if __name__ == "__main__":
         github_issue = github_repo.get_issue(number=args.github_issue_number)
         github_title = github_issue.title
         github_url = github_issue.html_url
+        # Determine the Component from GitHub template required field
+        github_issue_component_header = "\n".join(github_issue.body.splitlines()[0:1])
+        if github_issue_component_header == "### Component":
+            github_issue_component = "\n".join(github_issue.body.splitlines()[2:3])
+            if github_issue_component != "Other":
+                jira_component = github_issue_component
+            else:
+                logging.warning(
+                    "GitHub Issue Component is Other, defaulting to Infrastructure"
+                )
+        else:
+            logging.warning(
+                "Failed to determine Component of GitHub issue, template related problem?"
+            )
 
     jira_board_api_url = get_jira_board_api_url(jira, args.jira_board)
 
@@ -140,7 +157,7 @@ if __name__ == "__main__":
         "summary": github_title,
         "description": "See linked GitHub URL",
         "issuetype": {"name": "Task"},
-        "components": [{"name": "Infrastructure"}],
+        "components": [{"name": jira_component}],
     }
 
     try:
