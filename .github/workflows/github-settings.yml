@@ -1,0 +1,59 @@
+name: Scheduled GitHub Repo Settings Scan
+
+on:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron: "0 8 * * 1-5"
+    - cron: "0 9 * * 1-5"
+    - cron: "0 10 * * 1-5"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -r audit-github-repo-settings_requirements.txt
+
+      - name: Scan develop branches
+        if: github.event.schedule == '0 8 * * 1-5'
+        env:
+          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+        run: |
+          ./audit-github-repo-settings.py \
+            --branches develop \
+            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --open-github-issues \
+            --organizations usdot-fhwa-stol
+
+      - name: Scan master branches
+        if: github.event.schedule == '0 9 * * 1-5'
+        env:
+          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+        run: |
+          ./audit-github-repo-settings.py \
+            --branches master \
+            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --open-github-issues \
+            --organizations usdot-fhwa-stol
+
+      - name: Scan main branches
+        if: github.event.schedule == '0 9 * * 1-5'
+        env:
+          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+        run: |
+          ./audit-github-repo-settings.py \
+            --branches main \
+            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --open-github-issues \
+            --organizations usdot-fhwa-stol
