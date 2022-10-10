@@ -1,3 +1,5 @@
+name: Open Jira issue and link GitHub issue
+
 on:
   issues:
     types: [opened]
