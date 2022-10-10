@@ -392,7 +392,7 @@ def open_github_issue(errors_dict, github_token, org):
                     % (org, github_repo, branch)
                 )
                 if not github_issue_exists(issue_title):
-                    settings_url = repo.html_url + "/settings"
+                    settings_url = "https://github.com/" + org + "/" + github_repo + "/settings"
                     issue_body = "### Component\n\nInfrastructure\n\n### Specifics\n\n- [ ] CircleCI\n- [ ] Docker or Docker Hub\n- [ ] Doxygen\n- [ ] GitHub Actions\n- [X] GitHub branch or repo\n- [ ] Sonar\n\n### What happened?\n\n"
                     issue_body = issue_body + (
                         "The following ["
