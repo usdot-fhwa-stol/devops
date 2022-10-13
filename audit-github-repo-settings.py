@@ -99,7 +99,7 @@ def tests(github_branch, repo, token):
             repo, branch.name, template
         ):
             message_fail = (
-                "Branch contains docs/" + template + " instead of YAML-based template"
+                "Branch contains " + template + " instead of YAML-based template"
             )
             # FIXME: change to fatal error in the future
             # branch_errors = branch_errors + [message_fail]
