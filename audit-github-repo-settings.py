@@ -361,9 +361,7 @@ def test_branch_contains(repo, branch, contents):
 def is_blacklisted_repo(github_repo):
     blacklist = [
         "usdot-fhwa-stol/voices-cda-use-case-scenario-database",
-        "usdot-jpo-ode/TDx",
-        "usdot-jpo-ode/wzdc-tool",
-        "usdot-jpo-ode/wzdz",
+        "usdot-fhwa-stol/github_metrics",
     ]
 
     if github_repo in blacklist:
