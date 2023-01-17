@@ -47,9 +47,12 @@ def get_repo_list(github_org, github):
 def is_branch(branch, repo):
     # Test branch existence
     branch_exists = False
-    for ref in repo.get_git_refs():
-        if "refs/heads/" + branch == ref.ref:
-            branch_exists = True
+    try:
+        for ref in repo.get_git_refs():
+            if "refs/heads/" + branch == ref.ref:
+                branch_exists = True
+    except:
+        return branch_exists
 
     return branch_exists
 
