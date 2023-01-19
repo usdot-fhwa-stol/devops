@@ -306,7 +306,7 @@ def test_branch_push_restrictions(branch):
 
 # "Allow specified actors to bypass required pull requests"
 def test_branch_require_pull_requests(branch, token):
-    bypass_users = ["kjrush", "msmcconnell"]
+    bypass_users = ["kjrush"]
 
     protection_json = get_github_json(branch.get_protection().url, token)
 
