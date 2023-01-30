@@ -1,0 +1,59 @@
+name: Generate Release Notes
+
+on:
+  workflow_dispatch:
+    inputs:
+      organization:
+        description: 'Organization to scan'
+        required: true
+        default: 'usdot-fhwa-stol'
+        type: choice
+        options:
+          - usdot-fhwa-OPS
+          - usdot-fhwa-stol
+          - usdot-jpo-ode
+      release_branch:
+        description: 'Release branch to compare from'
+        required: true
+        type: string
+      stable_branch:
+        description: 'Stable branch to compare to'
+        required: true
+        default: 'master'
+        type: string
+      version:
+        description: 'Version number to use in release notes'
+        required: true
+        type: string
+
+jobs:
+  generate-release-notes:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install -r generate-release-notes_requirements.txt
+    - name: Generate release notes
+      env:
+        DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+      run: |
+        ./generate-release-notes.py \
+          --github-token "$DEVOPS_GITHUB_TOKEN" \
+          --organizations ${{ github.event.inputs.organization }} \
+          --output-file Release_Notes_${{ github.event.inputs.version }}.md \
+          --release-branch ${{ github.event.inputs.release_branch }} \
+          --stable-branch ${{ github.event.inputs.stable_branch }} \
+          --version ${{ github.event.inputs.version }}
+    - name: Archive release notes
+      uses: actions/upload-artifact@v3
+      with:
+        if-no-files-found: error
+        name: Release_Notes_${{ github.event.inputs.version }}.md
+        path: Release_Notes_${{ github.event.inputs.version }}.md
