@@ -10,6 +10,49 @@ green = "✅ \033[92m"
 red = "❌ \033[91m"
 yellow = "⚠️  \033[93m"
 
+def get_issues_from_pr(github_repo, pr_number):
+    github_issue = github_repo.get_pull(pr_number)
+
+    # Remove <!-- comments --> from issue body
+    try:
+        issue_body = re.sub('<!--.*-->', '', github_issue.body)
+    except:
+        pass
+
+    # Get text in Related Issue section
+    result = re.findall('## Related Issue(.*)## Motivation and Context', issue_body, re.DOTALL)
+
+    # Single string list to multi-string list
+    issues = "\n".join(result).split("\n")
+
+    # Remove "\r"
+    issues = [s.replace('\r', '') for s in issues]
+
+    # Remove empty list entries
+    issues = list(filter(None, issues))
+
+    # Remove entries with no numbers
+    issues = [s for s in issues if any(c.isdigit() for c in s)]
+
+    issues = [s.replace(' (mostly)', '') for s in issues]
+
+    issues = [s.strip() for s in issues]
+
+    if issues:
+        print("PR #" + str(pr_number) + ": found " + ", ".join(sorted(issues)))
+        issues = [re.findall('\d+$',s.strip())[0] for s in issues]
+
+    return issues
+
+def get_issue_titles(github_repo, issues):
+    issue_titles = []
+
+    for issue in issues:
+        github_issue = github_repo.get_issue(number=int(issue))
+        issue_title = "Issue #" + str(issue) + ": " + github_issue.title
+        issue_titles = issue_titles + [issue_title]
+
+    return issue_titles
 
 def get_repo_list(github_org, github):
     repo_list = []
@@ -37,6 +80,7 @@ def get_repo(repo_name, github):
 
 def is_blacklisted_repo(repo_name):
     blacklist = [
+        "usdot-fhwa-stol/carma-cloud",
         "usdot-fhwa-stol/documentation",
         "usdot-fhwa-stol/github_metrics",
         "usdot-fhwa-stol/voices-cda-use-case-scenario-database",
@@ -84,12 +128,13 @@ if __name__ == "__main__":
         exit()
 
     spreadsheet = set()
+    commit_only = set()
 
     try:
-        for org in args.organizations:
-            # for org in ["usdot-fhwa-stol"]:
-            for github_repo in get_repo_list(org, github):
-                # for github_repo in [".github", "devops", "carma-messenger"]:
+        #for org in args.organizations:
+        for org in ["usdot-fhwa-OPS"]:
+            #for github_repo in get_repo_list(org, github):
+            for github_repo in ["usdot-fhwa-OPS/V2X-Hub"]:
                 repo = get_repo(github_repo, github)
 
                 if repo.archived:
@@ -120,6 +165,7 @@ if __name__ == "__main__":
                     compare_branches[1], compare_branches[0]).commits
 
                 pull_requests = []
+                prr_list = set()
 
                 for found_commit in found_commits:
                     # Pull request
@@ -128,29 +174,30 @@ if __name__ == "__main__":
                             [found_commit.get_pulls()]
                         for pr in pull_requests:
                             for prr in pr:
-                                # Remove leading and trailing space and replace commas with spaces
-                                pr_title = prr.title.strip().replace(",", " ")
-                                # Remove multiple spaces
-                                pr_title = re.sub(" +", " ", pr_title)
-                                # Add PR number to title
-                                pr_title = pr_title + \
-                                    " (PR #" + str(prr.number) + ")"
-
-                                row = github_repo + "," + pr_title + "," + str(prr.closed_at) + "," + prr.html_url
-
-                                spreadsheet.add(row)
+                                prr_list.add(prr)
+                                continue
                     # Commit
                     else:
-                        commit_title = found_commit.commit.message.strip().split('\n', 1)[0]  + " (Commit " + found_commit.sha[0:6] + ")"
                         commit_url = found_commit.commit.html_url[:-34]
-                        row = github_repo + "," + commit_title + "," + str(found_commit.commit.committer.date) + "," + commit_url
-                        spreadsheet.add(row)
+                        commit_title = "Commit: " + found_commit.commit.message.strip().split('\n', 1)[0]  + " (" + commit_url + ")"
+                        commit_only.add(commit_title)
+                        continue
 
     except KeyboardInterrupt:
         exit()
 
-# Create .csv
-with open(r'prs.csv', 'w') as f:
-    f.write("Repo,Title,Date,URL\n")
-    for item in sorted(spreadsheet):
-        f.write("%s\n" % item)
+final_issues = []
+for pr in prr_list:
+    issues = get_issues_from_pr(repo, pr.number)
+
+    if issues:
+        final_issues = final_issues + get_issue_titles(repo, issues)
+
+if final_issues:
+    print("\nIssues:")
+    print("• " + "\n• ".join(sorted(set(final_issues))))
+    print("\n")
+
+if commit_only:
+    print("Commits with no detected issues:")
+    print("• " + "\n• ".join(sorted(commit_only)))
