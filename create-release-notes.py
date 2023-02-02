@@ -49,7 +49,24 @@ def get_issue_titles(github_repo, issues):
 
     for issue in issues:
         github_issue = github_repo.get_issue(number=int(issue))
-        issue_title = "Issue #" + str(issue) + ": " + github_issue.title
+
+        # Get issue's label names
+        issue_labels_names = set()
+        for label in github_issue.labels:
+            issue_labels_names.add(label.name)
+
+        # Format issue labels into string [label1, label2]
+        labels = ""
+        if issue_labels_names:
+            labels = " [" + ", ".join(issue_labels_names) + "]"
+
+        # Combine issue number with issue title
+        issue_title = "Issue #" + str(issue) + ": " + github_issue.title.strip()
+
+        # Combine issue title with issue label(s) if they exist
+        if labels:
+            issue_title = issue_title + labels
+
         issue_titles = issue_titles + [issue_title]
 
     return issue_titles
@@ -131,10 +148,9 @@ if __name__ == "__main__":
     commit_only = set()
 
     try:
-        #for org in args.organizations:
-        for org in ["usdot-fhwa-OPS"]:
+        for org in args.organizations:
             #for github_repo in get_repo_list(org, github):
-            for github_repo in ["usdot-fhwa-OPS/V2X-Hub"]:
+            for github_repo in ["usdot-fhwa-stol/carma-platform"]:
                 repo = get_repo(github_repo, github)
 
                 if repo.archived:
