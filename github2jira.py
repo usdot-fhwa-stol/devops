@@ -93,7 +93,7 @@ if __name__ == "__main__":
         "summary": github_title,
         "description": "See linked GitHub URL",
         "issuetype": {"name": "Task"},
-        "components": [{"name": jira_component}],
+        #"components": [{"name": jira_component}],
     }
 
     try:
