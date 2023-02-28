@@ -29,7 +29,7 @@ if __name__ == "__main__":
         github = Github(args.github_token)
     except Exception as e:
         logging.error(e)
-        exit()
+        exit(1)
 
     github_repo = github.get_repo(args.github_repo)
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         logging.info("Created Jira issue " + jira_issue.key)
     except Exception as e:
         logging.error(e)
-        exit()
+        exit(1)
 
     jira_link_json = {
         "url": github_url,
@@ -113,4 +113,4 @@ if __name__ == "__main__":
         logging.info(jira_issue.key + ": added " + github_url)
     except Exception as e:
         logging.error(e)
-        exit()
+        exit(1)
