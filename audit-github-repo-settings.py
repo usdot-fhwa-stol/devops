@@ -114,18 +114,19 @@ def tests(github_branch, repo, token):
     if branch.protected:
         logging.info(green + msg + '"Branch protection rules" enabled')
 
-        # "Allow specified actors to bypass required pull requests"
-        if test_branch_require_pull_requests(branch, token):
-            logging.info(
-                green
-                + msg
-                + '"Allow specified actors to bypass required pull requests" includes Kyle and Mike'
-            )
-        else:
-            message_fail = '"Allow specified actors to bypass required pull requests" excludes Kyle and Mike'
-            # FIXME: change to fatal once GitHub API returns to normal(?), protection json stopped showing consistent output
-            # branch_errors = branch_errors + [message_fail]
-            logging.warning(yellow + msg + message_fail)
+        if repo.organization.login == "usdot-fhwa-stol":
+            # "Allow specified actors to bypass required pull requests"
+            if test_branch_require_pull_requests(branch, token):
+                logging.info(
+                    green
+                    + msg
+                    + '"Allow specified actors to bypass required pull requests" includes Kyle and Mike'
+                )
+            else:
+                message_fail = '"Allow specified actors to bypass required pull requests" excludes Kyle'
+                # FIXME: change to fatal once GitHub API returns to normal(?), protection json stopped showing consistent output
+                # branch_errors = branch_errors + [message_fail]
+                logging.warning(yellow + msg + message_fail)
 
         # "Allow deletions"
         if test_branch_allow_deletions(branch, token):
@@ -200,25 +201,31 @@ def tests(github_branch, repo, token):
             logging.error(red + msg + message_fail)
 
         # "Restrict who can push to matching branches"
-        if test_branch_push_restrictions(branch):
+        if org == "usdot-fhwa-stol":
+            admin_teams = ["Administration"]
+            dev_teams = ["Administration", "Leidos Developers"]
+        elif org == "usdot-jpo-ode":
+            admin_teams = ["administration"]
+            dev_teams = ["admins", "bah_team", "leidos_team"]
+        if test_branch_push_restrictions(admin_teams, branch, dev_teams, repo.organization.login):
             if branch.name in ["main", "master"]:
                 message_pass = (
                     green
                     + msg
-                    + '"Restrict who can push to matching branches" set to Administration'
+                    + '"Restrict who can push to matching branches" set to ' + ", ".join(admin_teams)
                 )
             else:
                 message_pass = (
                     green
                     + msg
-                    + '"Restrict who can push to matching branches" set to Administration and Leidos Developers'
+                    + '"Restrict who can push to matching branches" set to ' + ", ".join(dev_teams)
                 )
             logging.info(message_pass)
         else:
             if branch.name in ["main", "master"]:
-                message_fail = '"Restrict who can push to matching branches" not set to Administration!'
+                message_fail = '"Restrict who can push to matching branches" not set to ' + ", ".join(admin_teams)
             else:
-                message_fail = '"Restrict who can push to matching branches" not set to Administration and Leidos Developers!'
+                message_fail = '"Restrict who can push to matching branches" not set to ' + ", ".join(dev_teams)
             branch_errors = branch_errors + [message_fail]
             logging.error(red + msg + message_fail)
     else:
@@ -283,11 +290,12 @@ def test_branch_allow_force_pushes(branch, token):
 
 
 # "Restrict who can push to matching branches"
-def test_branch_push_restrictions(branch):
+def test_branch_push_restrictions(admin_teams, branch, dev_teams, org):
+
     if branch.name in ["main", "master"]:
-        team_names = ["Administration"]
+        team_names = admin_teams
     else:
-        team_names = ["Administration", "Leidos Developers"]
+        team_names = dev_teams
 
     try:
         if len(list(branch.get_team_push_restrictions())) >= 1:
@@ -366,6 +374,7 @@ def is_blacklisted_repo(github_repo):
         "usdot-fhwa-stol/documentation",
         "usdot-fhwa-stol/github_metrics",
         "usdot-fhwa-stol/voices-cda-use-case-scenario-database",
+        "usdot-jpo-ode/usdot-jpo-ode.github.io",
     ]
 
     if github_repo in blacklist:
