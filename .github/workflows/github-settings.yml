@@ -33,7 +33,7 @@ jobs:
             --branches develop \
             --github-token "$DEVOPS_GITHUB_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol
+            --organizations usdot-fhwa-stol usdot-jpo-ode
 
       - name: Scan master branches
         if: github.event.schedule == '0 9 * * 1-5'
@@ -44,7 +44,7 @@ jobs:
             --branches master \
             --github-token "$DEVOPS_GITHUB_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol
+            --organizations usdot-fhwa-stol usdot-jpo-ode
 
       - name: Scan main branches
         if: github.event.schedule == '0 9 * * 1-5'
@@ -55,4 +55,4 @@ jobs:
             --branches main \
             --github-token "$DEVOPS_GITHUB_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol
+            --organizations usdot-fhwa-stol usdot-jpo-ode
