@@ -22,6 +22,9 @@ def get_issues_from_pr(github_repo, pr_number):
         # Get text in Related Issue section
         result = re.findall('## Related GitHub Issue(.*)## Related Jira Key', issue_body, re.DOTALL)
 
+        if not result:
+            result = re.findall('## Related Issue(.*)## Related Jira Key', issue_body, re.DOTALL)
+
     if result:
         # Single string list to multi-string list
         issues = "\n".join(result).split("\n")
