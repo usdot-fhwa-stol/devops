@@ -230,6 +230,7 @@ def release_notes():
                         continue
 
                 # Get issues from pull requests
+                issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
                 pull_requests_missing_issues = set()
                 if prr_list:
                     for pr in prr_list:
@@ -238,7 +239,6 @@ def release_notes():
                         if issues:
                             issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
                         else:
-                            issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
                             pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
                 else:
                     logging.warning(github_repo + ": no pull requests found")
