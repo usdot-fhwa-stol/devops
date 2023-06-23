@@ -151,6 +151,7 @@ def close_jira_issue(jira_issue):
         jira_issue.update(fields={"resolution": {"name": "Done"}})
 
 def create_github_issue(github_repo, jira_issue):
+    # FIXME: also update Jira key's URL with newly created GH issue's URL
     github_issue_title = jira_issue.fields.summary
     github_issue_body = jira_issue.fields.description
     github_issue_body += "\n\n" + "### Jira Issue" + "\n" + jira_issue.permalink()
