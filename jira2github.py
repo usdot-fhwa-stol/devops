@@ -197,7 +197,7 @@ if __name__ == "__main__":
     pr_jira_key = get_pr_jira_key(github_pull_request)
 
     if not pr_jira_key:
-        # Reject opened PR if no Jira issue key found
+        # Reject opened PR if no Jira key or GitHub issue found
         if github_pull_request.state == "open":
             pr_issues = get_issues_from_pr(github_repo, args.github_pr_number)
             if not pr_issues:
