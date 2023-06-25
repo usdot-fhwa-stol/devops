@@ -12,6 +12,7 @@ def get_jira(jira_email, jira_server, jira_token):
         jira = JIRA(
             basic_auth=(jira_email, jira_token),
             server=jira_server,
+            options={'verify': False}
         )
     except Exception as e:
         logging.error(e)
