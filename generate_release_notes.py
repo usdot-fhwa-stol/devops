@@ -136,6 +136,7 @@ def is_blacklisted_repo(repo_name):
         "usdot-fhwa-stol/carma-cloud",
         "usdot-fhwa-stol/documentation",
         "usdot-fhwa-stol/github_metrics",
+        "usdot-fhwa-stol/carma-analytics-fotda",
         "usdot-fhwa-stol/voices-cda-use-case-scenario-database",
     ]
 
