@@ -234,28 +234,27 @@ def release_notes():
                 # Get issues from pull requests
                 logging.info('Get issue from pull request')
                 issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
-                # pull_requests_missing_issues = set()
+                pull_requests_missing_issues = set()
                 if prr_list:
                     for pr in prr_list:
                         logging.info('PR number ' +  str(pr.number) )
                         try:
                             issues = get_issues_from_pr(repo, pr.number)
 
-                            # if issues:
-                            #     issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
-                            # else:
-                            #     pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
+                            if issues:
+                                issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
+                            else:
+                                pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
                         except:
                             logging.warning("Cannot get issue information for pull request "  +  str(pr.number) )
                 else:
                     logging.warning(github_repo + ": no pull requests found")
 
                 # Generate release notes for repo
-                # release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
-                # print(release_notes)
-                logging.warning('Generating release note for repos: {github_repo}' )
+                release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
+                logging.warning('Generating release note for repos: ' + github_repo)
+                logging.warning(release_notes)
 
-            logging.warning("Finished org" + org)
         # Write release notes to file
         pathlib.Path(args.output_file).unlink(missing_ok=True)
         with open(args.output_file, "w") as f:
