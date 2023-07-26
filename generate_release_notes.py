@@ -238,12 +238,15 @@ def release_notes():
                 if prr_list:
                     for pr in prr_list:
                         logging.info('PR number ' +  str(pr.number) )
-                        issues = get_issues_from_pr(repo, pr.number)
+                        try:
+                            issues = get_issues_from_pr(repo, pr.number)
 
-                        # if issues:
-                        #     issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
-                        # else:
-                        #     pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
+                            # if issues:
+                            #     issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
+                            # else:
+                            #     pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
+                        except:
+                            logging.warning("Cannot get issue information for pull request "  +  str(pr.number) )
                 else:
                     logging.warning(github_repo + ": no pull requests found")
 
@@ -260,6 +263,7 @@ def release_notes():
 
     except Exception as e:
         logging.error(e)
+        logging.warning("ERROR occured")
         sys.exit(1)
     except KeyboardInterrupt:
         logging.error("Keyboard interrupt")
