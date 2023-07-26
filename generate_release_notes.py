@@ -244,13 +244,14 @@ def release_notes():
                     logging.warning(github_repo + ": no pull requests found")
 
                 # Generate release notes for repo
-                release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
-                print(release_notes)
+                # release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
+                # print(release_notes)
+                print(f'Generating release note for repos: {github_repo}' )
 
         # Write release notes to file
-        pathlib.Path(args.output_file).unlink(missing_ok=True)
-        with open(args.output_file, "w") as f:
-            f.write(release_notes)
+        # pathlib.Path(args.output_file).unlink(missing_ok=True)
+        # with open(args.output_file, "w") as f:
+        #     f.write(release_notes)
 
     except Exception as e:
         logging.error(e)
