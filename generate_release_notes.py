@@ -232,12 +232,12 @@ def release_notes():
                         continue
 
                 # Get issues from pull requests
-                logging.warning('Get issue from pull request')
+                logging.info('Get issue from pull request')
                 issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
                 # pull_requests_missing_issues = set()
                 if prr_list:
                     for pr in prr_list:
-                        logging.warning('PR number ' +  pr.number )
+                        logging.info('PR number ' +  str(pr.number) )
                         issues = get_issues_from_pr(repo, pr.number)
 
                         # if issues:
