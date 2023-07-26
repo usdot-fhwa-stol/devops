@@ -170,7 +170,7 @@ def release_notes():
         release_notes = "# Releases"
 
         for org in args.organizations:
-            logging.info("Processing org" + org)
+            logging.info("Processing org =" + org)
             logging.info("NUmber of org = " + str(len(args.organizations)))
             for github_repo in get_repo_list(org, github):
                 logging.info("Processing " + github_repo)
@@ -233,17 +233,17 @@ def release_notes():
 
                 # Get issues from pull requests
                 issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
-                pull_requests_missing_issues = set()
-                if prr_list:
-                    for pr in prr_list:
-                        issues = get_issues_from_pr(repo, pr.number)
+                # pull_requests_missing_issues = set()
+                # if prr_list:
+                #     for pr in prr_list:
+                #         issues = get_issues_from_pr(repo, pr.number)
 
-                        if issues:
-                            issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
-                        else:
-                            pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
-                else:
-                    logging.warning(github_repo + ": no pull requests found")
+                #         if issues:
+                #             issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
+                #         else:
+                #             pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
+                # else:
+                #     logging.warning(github_repo + ": no pull requests found")
 
                 # Generate release notes for repo
                 # release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
