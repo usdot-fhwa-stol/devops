@@ -252,8 +252,8 @@ def release_notes():
 
                 # Generate release notes for repo
                 release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
-                logging.warning('Generating release note for repos: ' + github_repo)
-                logging.warning(release_notes)
+                logging.info('Generating release note for repos: ' + github_repo)
+                logging.info(release_notes)
 
         # Write release notes to file
         pathlib.Path(args.output_file).unlink(missing_ok=True)
