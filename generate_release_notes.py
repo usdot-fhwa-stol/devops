@@ -170,8 +170,6 @@ def release_notes():
         release_notes = "# Releases"
 
         for org in args.organizations:
-            logging.info("Processing org =" + org)
-            logging.info("NUmber of org = " + str(len(args.organizations)))
             for github_repo in get_repo_list(org, github):
                 logging.info("Processing " + github_repo)
                 repo = get_repo(github_repo, github)
