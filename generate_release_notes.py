@@ -232,7 +232,7 @@ def release_notes():
                         continue
 
                 # Get issues from pull requests
-                logging.info('Get issue from pull request')
+                logging.info('Get issue info from pull request (PR)...')
                 issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
                 pull_requests_missing_issues = set()
                 if prr_list:
