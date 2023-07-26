@@ -262,7 +262,6 @@ def release_notes():
 
     except Exception as e:
         logging.error(e)
-        logging.warning("ERROR occured")
         sys.exit(1)
     except KeyboardInterrupt:
         logging.error("Keyboard interrupt")
