@@ -232,13 +232,13 @@ def release_notes():
                         continue
 
                 # Get issues from pull requests
-                print(f'Get issue from pull request')
+                logging.warning('Get issue from pull request')
                 issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
                 # pull_requests_missing_issues = set()
                 if prr_list:
                     for pr in prr_list:
-                        print(f'PR number { pr.number }')
-                        # issues = get_issues_from_pr(repo, pr.number)
+                        logging.warning('PR number ' +  pr.number )
+                        issues = get_issues_from_pr(repo, pr.number)
 
                         # if issues:
                         #     issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
@@ -250,9 +250,9 @@ def release_notes():
                 # Generate release notes for repo
                 # release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
                 # print(release_notes)
-                print(f'Generating release note for repos: {github_repo}' )
+                logging.warning('Generating release note for repos: {github_repo}' )
 
-            logging.info("Finished org" + org)
+            logging.warning("Finished org" + org)
         # Write release notes to file
         pathlib.Path(args.output_file).unlink(missing_ok=True)
         with open(args.output_file, "w") as f:
