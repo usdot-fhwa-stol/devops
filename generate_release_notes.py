@@ -170,6 +170,8 @@ def release_notes():
         release_notes = "# Releases"
 
         for org in args.organizations:
+            logging.info("Processing org" + org)
+            logging.info("NUmber of org = " + len(args.organizations))
             for github_repo in get_repo_list(org, github):
                 logging.info("Processing " + github_repo)
                 repo = get_repo(github_repo, github)
@@ -248,6 +250,7 @@ def release_notes():
                 # print(release_notes)
                 print(f'Generating release note for repos: {github_repo}' )
 
+            logging.info("Finished org" + org)
         # Write release notes to file
         # pathlib.Path(args.output_file).unlink(missing_ok=True)
         # with open(args.output_file, "w") as f:
