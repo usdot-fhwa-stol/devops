@@ -230,22 +230,28 @@ def release_notes():
                         continue
 
                 # Get issues from pull requests
+                logging.info('Get issue info from pull request (PR)...')
                 issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
                 pull_requests_missing_issues = set()
                 if prr_list:
                     for pr in prr_list:
-                        issues = get_issues_from_pr(repo, pr.number)
+                        logging.info('PR number ' +  str(pr.number) )
+                        try:
+                            issues = get_issues_from_pr(repo, pr.number)
 
-                        if issues:
-                            issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
-                        else:
-                            pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
+                            if issues:
+                                issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
+                            else:
+                                pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
+                        except:
+                            logging.warning("Cannot get issue information for pull request "  +  str(pr.number) )
                 else:
                     logging.warning(github_repo + ": no pull requests found")
 
                 # Generate release notes for repo
                 release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
-                print(release_notes)
+                logging.info('Generating release note for repos: ' + github_repo)
+                logging.info(release_notes)
 
         # Write release notes to file
         pathlib.Path(args.output_file).unlink(missing_ok=True)
