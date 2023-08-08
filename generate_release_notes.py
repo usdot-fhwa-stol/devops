@@ -159,15 +159,16 @@ def is_branch(branch, repo):
 
     return branch_exists
 
-def release_notes(organizations):
+def release_notes():
     try:
         github = Github(args.github_token)
+        org= Org(arg.organizations)
     except Exception as e:
         logging.error(e)
         sys.exit(1)
 
     try:
-        release_notes = "#" + organizations + "Release Notes"
+        release_notes = "#" + org + "Release Notes"
 
         for org in args.organizations:
             for github_repo in get_repo_list(org, github):
