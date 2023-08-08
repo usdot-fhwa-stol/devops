@@ -107,7 +107,7 @@ def get_repo(repo_name, github):
 
 def get_release_notes(name, version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues):
     release_notes = "\n\n## " + name + "\n"
-    release_notes += "### " + version
+    release_notes += "### " + version + "released Jan 10th 2024"
 
     if issue_titles_bugs:
         release_notes += "\n\n#### Bugs & Anomalies\n"
@@ -167,7 +167,7 @@ def release_notes():
         sys.exit(1)
 
     try:
-        release_notes = "# Releases"
+        release_notes = args.organizations + "# Release Notes"
 
         for org in args.organizations:
             for github_repo in get_repo_list(org, github):
@@ -242,7 +242,7 @@ def release_notes():
                             if issues:
                                 issue_titles_bugs, issue_titles_enhancements, issue_titles_other = get_issue_titles(repo, issues)
                             else:
-                                pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
+                                pull_requests_missing_issues.add(pr.title.strip() + " (PR [#" + str(pr.number) + "](" + pr.html_url + "))")
                         except:
                             logging.warning("Cannot get issue information for pull request "  +  str(pr.number) )
                 else:
