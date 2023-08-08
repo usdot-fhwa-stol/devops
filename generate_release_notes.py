@@ -159,7 +159,7 @@ def is_branch(branch, repo):
 
     return branch_exists
 
-def release_notes():
+def release_notes(organizations):
     try:
         github = Github(args.github_token)
     except Exception as e:
@@ -249,7 +249,7 @@ def release_notes():
                     logging.warning(github_repo + ": no pull requests found")
 
                 # Generate release notes for repo
-                release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
+                release_notes += get_release_notes(repo.name, args.version, args.organizations ,issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
                 logging.info('Generating release note for repos: ' + github_repo)
                 logging.info(release_notes)
 
