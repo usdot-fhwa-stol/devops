@@ -107,7 +107,7 @@ def get_repo(repo_name, github):
 
 def get_release_notes(name, version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues):
     release_notes = "\n\n## " + name + "\n"
-    release_notes += "### " + version + "released Jan 10th 2024"
+    release_notes += "### Version" + version + "released Jan 10th 2024"
 
     if issue_titles_bugs:
         release_notes += "\n\n#### Bugs & Anomalies\n"
@@ -167,7 +167,7 @@ def release_notes():
         sys.exit(1)
 
     try:
-        release_notes = "# CARMA Platform Release Notes"
+        release_notes += "#" + organizations + "Release Notes"
 
         for org in args.organizations:
             for github_repo in get_repo_list(org, github):
