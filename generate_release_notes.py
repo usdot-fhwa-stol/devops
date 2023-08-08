@@ -167,7 +167,7 @@ def release_notes():
         sys.exit(1)
 
     try:
-        release_notes = args.organizations + "# Release Notes"
+        release_notes = "# CARMA Platform Release Notes"
 
         for org in args.organizations:
             for github_repo in get_repo_list(org, github):
