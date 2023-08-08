@@ -162,7 +162,7 @@ def is_branch(branch, repo):
 def release_notes():
     try:
         github = Github(args.github_token)
-        org= Org(arg.organizations)
+        org= arg.organizations
     except Exception as e:
         logging.error(e)
         sys.exit(1)
