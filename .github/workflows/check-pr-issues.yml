@@ -24,19 +24,20 @@ jobs:
     
     - name: Check PR for Issues
       run: |
+        apt-get install curl
         PR_NUMBER=${{ github.event.pull_request.number }}
         REPO_NAME=${{ github.repository }}
         
-        # Check if PR has corresponding issues
-        ISSUE_COUNT=$(curl -s -H "Authorization: Bearer ${{ secrets.BOT_TOKEN }}" \
-                        "https://api.github.com/repos/$REPO_NAME/issues?state=all&labels=bug&per_page=100&page=1" \
-                        | jq '.[] | select(.body | contains("Pull Request #'"$PR_NUMBER"'")) | length')
+        # Get issue data
+        ISSUE_DATA=$(curl -s -H "Authorization: Bearer ${{ secrets.BOT_TOKEN }}" \
+                        "https://api.github.com/repos/$REPO_NAME/issues?state=all&labels=bug&per_page=100&page=1")
         
-        if [ "$ISSUE_COUNT" -eq 0 ]; then
+        # Check if PR number is present in any issue body
+        if echo "$ISSUE_DATA" | grep -q "Pull Request #$PR_NUMBER"; then
+          echo "PR has corresponding GitHub issues."
+        else
           echo "No corresponding GitHub issues found for this pull request."
           exit 1
-        else
-          echo "PR has corresponding GitHub issues."
         fi
       env:
         BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
