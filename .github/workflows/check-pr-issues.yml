@@ -24,7 +24,7 @@ jobs:
     
     - name: Check PR for Issues
       run: |
-        apt-get install curl
+        sudo apt-get install curl
         PR_NUMBER=${{ github.event.pull_request.number }}
         REPO_NAME=${{ github.repository }}
         
