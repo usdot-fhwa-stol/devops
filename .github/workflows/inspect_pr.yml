@@ -11,6 +11,8 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+    - name: Install JQ Tool
+      uses: mbround18/install-jq@v1
 
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -24,6 +26,6 @@ jobs:
 
     - name: Run inspection script
       env:
-        DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+        BOT: ${{ secrets.BOT }}
         PR_NUMBER: ${{ github.event.number }}
       run: python inspect_pr.py

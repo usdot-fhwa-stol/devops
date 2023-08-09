@@ -2,11 +2,11 @@ import os
 import requests
 
 GITHUB_API_URL = "https://api.github.com"
-DEVOPS_GITHUB_TOKEN = os.environ.get("DEVOPS_GITHUB_TOKEN")  # Set your GitHub access token as an environment variable
+BOT = os.environ.get("BOT")  # Set your GitHub access token as an environment variable
 
 def check_issue_reference(repo_full_name, pr_number):
     url = f"{GITHUB_API_URL}/repos/{repo_full_name}/pulls/{pr_number}/commits"
-    headers = {"Authorization": f"token {DEVOPS_GITHUB_TOKEN}"}
+    headers = {"Authorization": f"token {BOT}"}
     response = requests.get(url, headers=headers)
     commits = response.json()
 
@@ -18,7 +18,7 @@ def check_issue_reference(repo_full_name, pr_number):
 
 def add_comment_to_pr(repo_full_name, pr_number):
     url = f"{GITHUB_API_URL}/repos/{repo_full_name}/issues/{pr_number}/comments"
-    headers = {"Authorization": f"token {DEVOPS_GITHUB_TOKEN}"}
+    headers = {"Authorization": f"token {BOT}"}
     data = {
         "body": "This pull request does not reference a GitHub issue. Please link to an issue in the PR description."
     }
