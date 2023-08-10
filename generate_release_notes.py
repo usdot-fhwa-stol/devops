@@ -60,7 +60,6 @@ def get_issues_from_pr(github_repo, pr_number):
 
     return issues
 
-
 def get_issue_titles(github_repo, issues):
     issue_titles_bugs = []
     issue_titles_enhancements = []
@@ -82,7 +81,6 @@ def get_issue_titles(github_repo, issues):
             issue_titles_other = issue_titles_other + [github_issue.title.strip()]
 
     return issue_titles_bugs, issue_titles_enhancements, issue_titles_other
-
 
 def get_repo_list(github_org, github):
     repo_list = []
@@ -107,34 +105,88 @@ def get_repo(repo_name, github):
 
     return repo
 
-def generate_release_notes(repo_name, version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues):
-    release_notes = f"""
-## {repo_name}
-### {version}
-
-"""
+def get_release_notes(name, version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues):
+    release_notes = "\n\n## " + name + "\n"
+    release_notes += "### " + version
 
     if issue_titles_bugs:
-        release_notes += "#### Bugs & Anomalies\n"
-        release_notes += "\n".join(f"* {title}" for title in sorted(set(issue_titles_bugs))) + "\n\n"
+        release_notes += "\n\n#### Bugs & Anomalies\n"
+        release_notes += "* " + "\n* ".join(sorted(set(issue_titles_bugs)))
 
     if issue_titles_enhancements:
-        release_notes += "#### Enhancements\n"
-        release_notes += "\n".join(f"* {title}" for title in sorted(set(issue_titles_enhancements))) + "\n\n"
+        release_notes += "\n\n#### Enhancements\n"
+        release_notes += "* " + "\n* ".join(sorted(set(issue_titles_enhancements)))
 
     if issue_titles_other:
-        release_notes += "#### Issues Missing Labels\n"
-        release_notes += "\n".join(f"* {title}" for title in sorted(set(issue_titles_other))) + "\n\n"
+        release_notes += "\n\n#### Issues Missing Labels\n"
+        release_notes += "* " + "\n* ".join(sorted(set(issue_titles_other)))
 
     if commit_only:
-        release_notes += "#### Commits Missing Issues\n"
-        release_notes += "\n".join(f"* {commit}" for commit in sorted(commit_only)) + "\n\n"
+        release_notes += "\n\n#### Commits Missing Issues\n"
+        release_notes += "* " + "\n* ".join(sorted(commit_only))
 
     if pull_requests_missing_issues:
-        release_notes += "#### Pull Requests Missing Issues\n"
-        release_notes += "\n".join(f"* {pr}" for pr in sorted(pull_requests_missing_issues)) + "\n\n"
+        release_notes += "\n\n#### Pull Requests Missing Issues\n"
+        release_notes += "* " + "\n* ".join(sorted(pull_requests_missing_issues))
 
     return release_notes
+
+def is_blacklisted_repo(repo_name):
+    blacklist = [
+        "usdot-fhwa-stol/carma-cloud",
+        "usdot-fhwa-stol/documentation",
+        "usdot-fhwa-stol/github_metrics",
+        "usdot-fhwa-stol/voices-cda-use-case-scenario-database",
+    ]
+
+    if repo_name in blacklist:
+        logging.warning(repo_name +
+                        ": blacklisted repository, skipping it")
+        return True
+    else:
+        return False
+
+
+def is_branch(branch, repo):
+    # Test branch existence
+    branch_exists = False
+    try:
+        for ref in repo.get_git_refs():
+            if "refs/heads/" + branch == ref.ref:
+                branch_exists = True
+    except:
+        return branch_exists
+
+    return branch_exists
+
+
+def is_blacklisted_repo(repo_name):
+    blacklist = [
+        "usdot-fhwa-stol/carma-cloud",
+        "usdot-fhwa-stol/documentation",
+        "usdot-fhwa-stol/github_metrics",
+        "usdot-fhwa-stol/voices-cda-use-case-scenario-database",
+    ]
+
+    if repo_name in blacklist:
+        logging.warning(repo_name +
+                        ": blacklisted repository, skipping it")
+        return True
+    else:
+        return False
+
+
+def is_branch(branch, repo):
+    # Test branch existence
+    branch_exists = False
+    try:
+        for ref in repo.get_git_refs():
+            if "refs/heads/" + branch == ref.ref:
+                branch_exists = True
+    except:
+        return branch_exists
+
+    return branch_exists
 
 
 def release_notes():
@@ -145,12 +197,13 @@ def release_notes():
         sys.exit(1)
 
     try:
-        release_notes_content = "# Releases\n\n"
+        release_notes = "# Releases"
 
         for org in args.organizations:
             for github_repo in get_repo_list(org, github):
-                logging.info(f"Processing {github_repo}")
+                logging.info("Processing " + github_repo)
                 repo = get_repo(github_repo, github)
+
                 # Skip archived repos
                 if repo.archived:
                     logging.warning(
@@ -158,12 +211,14 @@ def release_notes():
                     )
                     continue
 
-                # New branch versus old branch
-                compare_branches = [args.release_branch, args.stable_branch]
-
                 # Skip blacklisted repos
                 if is_blacklisted_repo(github_repo):
                     continue
+
+                # New branch versus old branch
+                compare_branches = [args.release_branch, args.stable_branch]
+
+
                 # Test branch existence
                 skip = False
                 for branch in compare_branches:
@@ -174,6 +229,7 @@ def release_notes():
                         )
                         skip = True
                         break
+
                 # Skip repo if branch does not exist
                 if skip:
                     continue
@@ -223,12 +279,14 @@ def release_notes():
                     logging.warning(github_repo + ": no pull requests found")
 
                 # Generate release notes for repo
-                release_notes_content += generate_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
-                logging.info(f'Generated release notes for repository: {github_repo}')
+                release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
+                logging.info('Generating release note for repos: ' + github_repo)
+                logging.info(release_notes)
 
         # Write release notes to file
+        pathlib.Path(args.output_file).unlink(missing_ok=True)
         with open(args.output_file, "w") as f:
-            f.write(release_notes_content)
+            f.write(release_notes)
 
     except Exception as e:
         logging.error(e)
@@ -236,7 +294,6 @@ def release_notes():
     except KeyboardInterrupt:
         logging.error("Keyboard interrupt")
         sys.exit(1)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
