@@ -1,0 +1,43 @@
+name: Inspect PR for GitHub Issue Link
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+env:
+  BOT: ${{ secrets.BOT }}     
+jobs:
+  inspect-pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install JQ Tool
+        uses: mbround18/install-jq@v1
+      - name: Check PR for GitHub Issue Link
+        run: |
+          PR_NUMBER=$(jq -r ".number" $GITHUB_EVENT_PATH)
+          PR_TITLE=$(jq -r ".pull_request.title" $GITHUB_EVENT_PATH)
+          PR_BODY=$(jq -r ".pull_request.body" $GITHUB_EVENT_PATH)
+          BOT=$1
+
+          # Regular expression pattern to match GitHub issue references (e.g., #123)
+          PATTERN="#[0-9]+"
+
+          if [[ $PR_TITLE =~ $PATTERN || $PR_BODY =~ $PATTERN ]]; then
+            echo "PR contains a GitHub issue reference."
+          else
+            echo "PR does not contain a GitHub issue reference. Adding a comment..."
+            COMMENT_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments"
+            COMMENT_BODY="This pull request does not reference a GitHub issue, Please make sure to reference a GitHub issue in the PR title or description."
+            curl -X POST -H "Authorization: Bearer $BOT" -d "{\"body\": \"$COMMENT_BODY\"}" $COMMENT_URL
+            exit 1
+          fi
+      - name: Debug JSON Parsing
+        run: |
+          PR_NUMBER=$(jq -r ".number" $GITHUB_EVENT_PATH)
+          PR_TITLE=$(jq -r ".pull_request.title" $GITHUB_EVENT_PATH)
+          PR_BODY=$(jq -r ".pull_request.body" $GITHUB_EVENT_PATH)
+          echo "PR_NUMBER: $PR_NUMBER"
+          echo "PR_TITLE: $PR_TITLE"
+          echo "PR_BODY: $PR_BODY"
