@@ -40,7 +40,7 @@ jobs:
           else
             echo "PR does not contain a GitHub issue reference. Adding a comment..."
             COMMENT_URL="https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/comments"
-            COMMENT_BODY="This pull request does not reference a GitHub issue. Please make sure to reference a GitHub issue in the PR title or description."
+            COMMENT_BODY="This pull request does not reference a GitHub issue. Please make sure to reference a GitHub issue in the PR title or description. Thanks"
             curl -X POST -H "Authorization: Bearer $DEVOPS_GITHUB_TOKEN" -d "{\"body\": \"$COMMENT_BODY\"}" $COMMENT_URL
           fi
       - name: Debug JSON Parsing
@@ -51,3 +51,9 @@ jobs:
           echo "PR_NUMBER: $PR_NUMBER"
           echo "PR_TITLE: $PR_TITLE"
           echo "PR_BODY: $PR_BODY"
+      - name: Get PR author's info
+        run: |
+          PR_AUTHOR=$(jq -r ".pull_request.user.login" $GITHUB_EVENT_PATH)
+          PR_AUTHOR_PROFILE="https://github.com/$PR_AUTHOR"
+          echo "PR_AUTHOR: $PR_AUTHOR"
+          echo "PR_AUTHOR_PROFILE: $PR_AUTHOR_PROFILE"
