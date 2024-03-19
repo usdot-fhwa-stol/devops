@@ -1,6 +1,6 @@
 ## CI/CD Dashboard
-| Repo      | SonarCloud Quality Gate Status | DockerHub Automated Build (Develop) |
-| ----------- | :-----------: | :-----------: |
+| Repo      | SonarCloud Quality Gate Status | Docker Image Builds (Develop) | Docker Image Builds (Master) |
+| ----------- | :-----------: | :-----------: | :-----------: |
 | [CARMA Streets](https://github.com/usdot-fhwa-stol/carma-streets) | [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=usdot-fhwa-stol_carma-streets&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=usdot-fhwa-stol_carma-streets) | **?** |
 | [CARMA Platform](https://github.com/usdot-fhwa-stol/carma-platform) | [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=usdot-fhwa-stol_CARMAPlatform&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=usdot-fhwa-stol_CARMAPlatform) | ![Docker Automated build](https://img.shields.io/docker/automated/usdotfhwastoldev/carma-platform) |
 | [CDASim](https://github.com/usdot-fhwa-stol/cdasim) | [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=usdot-fhwa-stol_carma-simulation&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=usdot-fhwa-stol_carma-simulation) | ![Docker Automated build](https://img.shields.io/docker/automated/usdotfhwastoldev/cdasim) |
