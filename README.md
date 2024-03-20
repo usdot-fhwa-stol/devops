@@ -14,18 +14,12 @@
 |-----|-----|-----|-----|-----|-----|
 [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/usdotfhwastoldev/scheduling_service?label=scheduling%20service)](https://hub.docker.com/repository/docker/usdotfhwastoldev/scheduling_service) | [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/usdotfhwastoldev/message_services?label=message%20services)](https://hub.docker.com/repository/docker/usdotfhwastoldev/message_services)   	|  [ ![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/usdotfhwastoldev/intersection_model?label=intersection%20model)](https://hub.docker.com/repository/docker/usdotfhwastoldev/intersection_model)	| [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/usdotfhwastoldev/signal_opt_service?label=signal%20opt%20service)](https://hub.docker.com/repository/docker/usdotfhwastoldev/signal_opt_service)  	| [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/usdotfhwastoldev/tsc_service?label=tsc%20service&logoColor=%232496ED)](https://hub.docker.com/repository/docker/usdotfhwastoldev/tsc_service) | ![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/usdotfhwastoldev/sensor_data_sharing_service?label=sensor_data_sharing_%20service&logoColor=%232496ED)|
 ## [CARMA Platform](https://github.com/usdot-fhwa-stol/carma-platform)
-table here
 
 ## [CDASim](https://github.com/usdot-fhwa-stol/cdasim) 
-table here
 
 ## [Telematics](https://github.com/usdot-fhwa-stol/cda-telematics)
-table here
 
 ## [V2X-Hub](https://github.com/usdot-fhwa-OPS/V2X-Hub)
-table here
-
-<--> In Progress! <-->
 
 | Repo      | SonarCloud Quality Gate Status | Docker Image Builds (Develop) | Docker Image Builds (Master) |
 | ----------- | :-----------: | :-----------: | :-----------: |
