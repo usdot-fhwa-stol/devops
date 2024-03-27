@@ -1,6 +1,9 @@
 name: Scheduled GitHub Repo Settings Scan
 
 on:
+  push:
+    branches:
+      - fix-github-settings-audit
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron: "0 8 * * 1-5"
