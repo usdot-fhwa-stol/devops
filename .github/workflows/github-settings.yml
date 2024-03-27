@@ -15,7 +15,8 @@ jobs:
     permissions:
       issues: write
       repository-projects: read
-      
+      contents: read
+      statuses: read
     steps:
       - uses: actions/checkout@v3
         with:
