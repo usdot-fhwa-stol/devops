@@ -28,7 +28,6 @@ jobs:
           python -m pip install -r audit-github-repo-settings_requirements.txt
 
       - name: Scan develop branches
-        if: github.event.schedule == '0 8 * * 1-5'
         env:
           DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
         run: |
@@ -39,7 +38,6 @@ jobs:
             --organizations usdot-fhwa-stol usdot-jpo-ode
 
       - name: Scan master branches
-        if: github.event.schedule == '0 9 * * 1-5'
         env:
           DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
         run: |
@@ -50,7 +48,6 @@ jobs:
             --organizations usdot-fhwa-stol usdot-jpo-ode
 
       - name: Scan main branches
-        if: github.event.schedule == '0 9 * * 1-5'
         env:
           DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
         run: |
