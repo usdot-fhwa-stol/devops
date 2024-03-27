@@ -34,7 +34,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh api /repos/usdot-fhwa-stol/devops/develop/protection
+          gh api /repos/usdot-fhwa-stol/devops/branches/develop/protection
 
       - name: Scan develop branches
         run: |
