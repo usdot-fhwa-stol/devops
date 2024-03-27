@@ -29,7 +29,7 @@ jobs:
 
       - name: Scan develop branches
         env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          DEVOPS_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./audit-github-repo-settings.py \
             --branches develop \
@@ -39,7 +39,7 @@ jobs:
 
       - name: Scan master branches
         env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          DEVOPS_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./audit-github-repo-settings.py \
             --branches master \
@@ -49,7 +49,7 @@ jobs:
 
       - name: Scan main branches
         env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          DEVOPS_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./audit-github-repo-settings.py \
             --branches main \
