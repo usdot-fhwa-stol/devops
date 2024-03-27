@@ -28,31 +28,25 @@ jobs:
           python -m pip install -r audit-github-repo-settings_requirements.txt
 
       - name: Scan develop branches
-        env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./audit-github-repo-settings.py \
             --branches develop \
-            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --github-token ${{ secrets.GITHUB_TOKEN }} \
             --open-github-issues \
             --organizations usdot-fhwa-stol usdot-jpo-ode
 
-      - name: Scan master branches
-        env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Scan master branches  
         run: |
           ./audit-github-repo-settings.py \
             --branches master \
-            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --github-token ${{ secrets.GITHUB_TOKEN }} \
             --open-github-issues \
             --organizations usdot-fhwa-stol usdot-jpo-ode
 
       - name: Scan main branches
-        env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ./audit-github-repo-settings.py \
             --branches main \
-            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --github-token "${{ secrets.GITHUB_TOKEN }}" \
             --open-github-issues \
             --organizations usdot-fhwa-stol usdot-jpo-ode
