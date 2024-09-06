@@ -5,30 +5,8 @@ import logging
 import pathlib
 import re
 import sys
-import requests
 
-# Function to get Jira issue details based on the Jira key
-def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
-    url = f"{jira_url}/rest/api/3/issue/{issue_key}"
-    auth = (jira_email, jira_token)
-    headers = {"Accept": "application/json"}
 
-    response = requests.get(url, auth=auth, headers=headers)
-    if response.status_code == 200:
-        return response.json()  # Return the full Jira issue JSON response
-    else:
-        logging.error(f"Failed to fetch Jira issue {issue_key}: {response.status_code} - {response.text}")
-        return None
-
-# Function to find parent epic from Jira story or issue
-def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
-    parent_key = jira_issue['fields'].get('parent', {}).get('key')
-    if parent_key:
-        parent_epic = get_jira_issue(parent_key, jira_url, jira_email, jira_token)
-        return get_epic_details(parent_epic)
-    return None, None, None
-
-# Extract Jira keys and GitHub issues from PRs
 def get_issues_from_pr(github_repo, pr_number):
     github_pull_request = github_repo.get_pull(pr_number)
 
@@ -39,27 +17,70 @@ def get_issues_from_pr(github_repo, pr_number):
         issue_body = ""
         pass
 
-    jira_keys = []
-    github_issues = []
-
+    result = []
     if issue_body:
-        # Get Jira keys from the "Related Jira Key" section from PR bodt
-        jira_key_match = re.findall(r'Related Jira Key.*?(\[.*?\])?\(?([A-Z]+-\d+)\)?', issue_body, re.DOTALL)
-        if jira_key_match:
-            jira_keys = [match[1].strip() for match in jira_key_match if match[1].strip()]
+        # Get text in Related Issue section
+        result = re.findall('## Related GitHub Issue(.*)## Related Jira Key', issue_body, re.DOTALL)
 
-        # If no Jira keys found, check for GitHub Issues from the "Related GitHub Issue" section
-        if not jira_keys:
-            github_issue_match = re.findall(r'Related GitHub Issue.*?(\[.*?\])?\(?#(\d+)\)?', issue_body, re.DOTALL)
-            if github_issue_match:
-                github_issues = [f"#{match[1].strip()}" for match in github_issue_match if match[1].strip()]
+        if not result:
+            result = re.findall('## Related Issue(.*)## Related Jira Key', issue_body, re.DOTALL)
 
-        # If neither Jira keys nor GitHub issues are found, use the PR title and description
-        if not jira_keys and not github_issues:
-            jira_keys = [f"PR Title: {github_pull_request.title.strip()}"]
-            github_issues = [f"PR Description: {github_pull_request.body.strip()[:100]}"]  # Trim description for length
+    if result:
+        # Single string list to multi-string list
+        issues = "\n".join(result).split("\n")
+    else:
+        issues = []
 
-    return jira_keys, github_issues
+    try:
+        # Remove \r from list entries
+        issues = [s.replace('\r', '') for s in issues]
+    except:
+        issues = []
+
+    # Remove empty list entries
+    issues = list(filter(None, issues))
+
+    if issues:
+        # Remove NA and TODO from list
+        issues = [s for s in issues if s != "NA" and s != "TODO"]
+
+        # Remove entries with no numbers
+        issues = [s for s in issues if any(c.isdigit() for c in s)]
+
+        issues = [s.replace(' (mostly)', '') for s in issues]
+
+        issues = [s.strip() for s in issues]
+
+        if issues:
+            logging.info("PR #" + str(pr_number) + ": found " + ", ".join(sorted(issues)))
+            try:
+                issues = [re.findall('\d+$',s.strip())[0] for s in issues]
+            except:
+                pass
+
+    return issues
+
+def get_issue_titles(github_repo, issues):
+    issue_titles_bugs = []
+    issue_titles_enhancements = []
+    issue_titles_other = []
+
+    for issue in issues:
+        github_issue = github_repo.get_issue(number=int(issue))
+
+        # Get issue's label names
+        issue_labels_names = set()
+        for label in github_issue.labels:
+            issue_labels_names.add(label.name)
+
+        if "enhancement" in issue_labels_names:
+            issue_titles_enhancements = issue_titles_enhancements + [github_issue.title.strip()]
+        elif "anomaly" or "bug" in issue_labels_names:
+            issue_titles_bugs = issue_titles_bugs + [github_issue.title.strip()]
+        else:
+            issue_titles_other = issue_titles_other + [github_issue.title.strip()]
+
+    return issue_titles_bugs, issue_titles_enhancements, issue_titles_other
 
 def get_repo_list(github_org, github):
     repo_list = []
