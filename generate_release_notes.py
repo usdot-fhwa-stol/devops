@@ -13,12 +13,16 @@ def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
     auth = (jira_email, jira_token)
     headers = {"Accept": "application/json"}
 
-    response = requests.get(url, auth=auth, headers=headers)
-    if response.status_code == 200:
+    try:
+        response = requests.get(url, auth=auth, headers=headers)
+        response.raise_for_status()  # Raise HTTPError for bad responses
         return response.json()  # Return the full Jira issue JSON response
-    else:
-        logging.error(f"Failed to fetch Jira issue {issue_key}: {response.status_code} - {response.text}")
-        return None
+    except requests.exceptions.HTTPError as http_err:
+        logging.error(f"HTTP error occurred while fetching Jira issue {issue_key}: {http_err}")
+    except Exception as err:
+        logging.error(f"Error occurred while fetching Jira issue {issue_key}: {err}")
+
+    return None
 
 
 def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
@@ -283,8 +287,8 @@ def release_notes():
                             # Fallback to PR description and title
                             else:
                                 pull_requests_missing_issues.add(pr.title.strip() + " (Pull Request [#" + str(pr.number) + "](" + pr.html_url + "))")
-                        except:
-                            logging.warning("Cannot get issue information for pull request "  +  str(pr.number) )
+                        except Exception as e:
+                            logging.warning(f"Cannot get issue information for pull request {pr.number}: {e}")
                 else:
                     logging.warning(github_repo + ": no pull requests found")
 
