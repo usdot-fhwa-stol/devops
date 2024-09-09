@@ -18,12 +18,16 @@ def get_issues_from_pr(github_repo, pr_number):
         pass
 
     result = []
+    jira_keys = []
     if issue_body:
         # Handle both Related GitHub Issue and Related Jira Key
         result = re.findall(r'## Related GitHub Issue(?:.*?)([A-Za-z0-9-#]+)', issue_body, re.DOTALL)
 
         if not result:
             result = re.findall(r'## Related Issue(?:.*?)([A-Za-z0-9-#]+)', issue_body, re.DOTALL)
+
+        # Extract Jira keys from the "Related Jira Key" section in the PR body
+        jira_keys = re.findall(r'## Related Jira Key(?:.*?)([A-Z]+-\d+)', issue_body, re.DOTALL)
 
     if result:
         # Split the extracted string into list items based on newlines 
@@ -38,9 +42,12 @@ def get_issues_from_pr(github_repo, pr_number):
     issues = [issue for issue in issues if re.search(r'\d+', issue)]
 
     if issues:
-        logging.info(f"PR #{pr_number}: found {', '.join(sorted(issues))}")
+        logging.info(f"PR #{pr_number}: found GitHub Issues: {', '.join(sorted(issues))}")
 
-    return issues
+    if jira_keys:
+        logging.info(f"PR #{pr_number}: found Jira Keys: {', '.join(sorted(jira_keys))}")
+
+    return issues, jira_keys
 
 def get_issue_titles(github_repo, issues):
     issue_titles_bugs = []
@@ -66,19 +73,21 @@ def get_issue_titles(github_repo, issues):
 
 def get_repo_list(github_org, github):
     repo_list = []
-    for repo in github.get_organization(github_org).get_repos():
-        repo_list.append(repo.full_name)
-    return sorted(repo_list)
-def get_repo(repo_name, github):
-    msg_failure = repo_name + ": repo does not exist or bad token"
-    try:
-        repo = github.get_repo(repo_name)
-    except Exception as e:
-        logging.error(e)
-        logging.error(msg_failure)
-        sys.exit(1)
 
-    return repo
+    for repo in github.get_organization(github_org).get_repos():
+        repo_list = repo_list + [repo.full_name]
+
+    repo_list = sorted(repo_list)
+
+    return repo_list
+
+
+def get_repo(repo_name, github):
+    try:
+        return github.get_repo(repo_name)
+    except Exception as e:
+        logging.error(f"{repo_name}: repo does not exist or bad token. Error: {e}")
+        sys.exit(1)
 
 def get_release_notes(name, version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues):
     release_notes = "\n\n## " + name + "\n"
