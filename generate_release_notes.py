@@ -43,6 +43,10 @@ def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
                         cleaned_description.append(paragraph_text)
                 epic_description = "\n".join(cleaned_description) if cleaned_description else 'No description available'
 
+            # Cut epic description to a maximum of 300 characters
+            if len(epic_description) > 300:
+                epic_description = epic_description[:300] + "..."
+
             return epic_key, epic_title, epic_description
     return None, None, None
 
