@@ -19,44 +19,26 @@ def get_issues_from_pr(github_repo, pr_number):
 
     result = []
     if issue_body:
-        # Get text in Related Issue section
-        result = re.findall('## Related GitHub Issue(.*)## Related Jira Key', issue_body, re.DOTALL)
+        # Handle both Related GitHub Issue and Related Jira Key
+        result = re.findall(r'## Related GitHub Issue(?:.*?)([A-Za-z0-9-#]+)', issue_body, re.DOTALL)
 
         if not result:
-            result = re.findall('## Related Issue(.*)## Related Jira Key', issue_body, re.DOTALL)
+            result = re.findall(r'## Related Issue(?:.*?)([A-Za-z0-9-#]+)', issue_body, re.DOTALL)
 
     if result:
-        # Single string list to multi-string list
-        issues = "\n".join(result).split("\n")
+        # Split the extracted string into list items based on newlines 
+        issues = re.split(r'\s*,\s*|\s*\n\s*', "\n".join(result))
     else:
         issues = []
 
-    try:
-        # Remove \r from list entries
-        issues = [s.replace('\r', '') for s in issues]
-    except:
-        issues = []
+    # Clean up issues, remove any unwanted characters
+    issues = [issue.strip() for issue in issues if issue.strip() and issue.strip().lower() not in ["na", "todo"]]
 
-    # Remove empty list entries
-    issues = list(filter(None, issues))
+    # Only keep issues with numeric identifiers
+    issues = [issue for issue in issues if re.search(r'\d+', issue)]
 
     if issues:
-        # Remove NA and TODO from list
-        issues = [s for s in issues if s != "NA" and s != "TODO"]
-
-        # Remove entries with no numbers
-        issues = [s for s in issues if any(c.isdigit() for c in s)]
-
-        issues = [s.replace(' (mostly)', '') for s in issues]
-
-        issues = [s.strip() for s in issues]
-
-        if issues:
-            logging.info("PR #" + str(pr_number) + ": found " + ", ".join(sorted(issues)))
-            try:
-                issues = [re.findall('\d+$',s.strip())[0] for s in issues]
-            except:
-                pass
+        logging.info(f"PR #{pr_number}: found {', '.join(sorted(issues))}")
 
     return issues
 
@@ -217,7 +199,7 @@ def release_notes():
                     # Save commits with no pull requests
                     else:
                         commit_url = found_commit.commit.html_url[:-34]
-                        commit_title = "{} (Commit [{}])".format(found_commit.commit.message.strip().split('\n', 1)[0], found_commit.commit.sha[:6])
+                        commit_title = found_commit.commit.message.strip().split('\n', 1)[0] + " (Commit [" + found_commit.commit.sha[0:6]  + "](" + commit_url + "))"
                         commit_only.add(commit_title)
                         continue
 
