@@ -5,6 +5,46 @@ import logging
 import pathlib
 import re
 import sys
+import requests
+
+
+def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
+    url = f"{jira_url}/rest/api/3/issue/{issue_key}"
+    auth = (jira_email, jira_token)
+    headers = {"Accept": "application/json"}
+
+    response = requests.get(url, auth=auth, headers=headers)
+    if response.status_code == 200:
+        return response.json()  # Return the full Jira issue JSON response
+    else:
+        logging.error(f"Failed to fetch Jira issue {issue_key}: {response.status_code} - {response.text}")
+        return None
+
+
+def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
+    # Check if the Jira issue has a parent epic by checking the "parent" field
+    parent_field = jira_issue['fields'].get('parent')
+    
+    if parent_field:
+        epic_key = parent_field['key']  # Get the parent epic's key
+        epic = get_jira_issue(epic_key, jira_url, jira_email, jira_token)
+
+        if epic:
+            epic_title = epic['fields'].get('summary', 'No title')
+            epic_description = epic['fields'].get('description', 'No description provided')
+
+            # Clean the description (optional, based on need)
+            if isinstance(epic_description, dict) and 'content' in epic_description:
+                content_blocks = epic_description.get('content', [])
+                cleaned_description = []
+                for block in content_blocks:
+                    if block['type'] == 'paragraph':
+                        paragraph_text = " ".join([item.get('text', '') for item in block.get('content', []) if item.get('type') == 'text'])
+                        cleaned_description.append(paragraph_text)
+                epic_description = "\n".join(cleaned_description) if cleaned_description else 'No description available'
+
+            return epic_key, epic_title, epic_description
+    return None, None, None
 
 
 def get_issues_from_pr(github_repo, pr_number):
