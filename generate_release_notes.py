@@ -261,3 +261,5 @@ if __name__ == "__main__":
         format="%(message)s",
         handlers=[logging.StreamHandler()],
     )
+
+    release_notes()
