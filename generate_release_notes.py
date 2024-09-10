@@ -21,12 +21,32 @@ def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
     else:
         logging.error(f"Failed to fetch Jira issue {issue_key}: {response.status_code} - {response.text}")
         return None
-# Function to extract the Jira issue title and description
+
+# Function to extract the Jira epic's title and description information 
 def get_epic_details(jira_issue):
-    epic_title = jira_issue['fields']['summary']  # The title of the Jira issue (epic)
+    epic_key = jira_issue['key']  # Capture the Epic key (e.g., C1T-1234 or any other format key)
+    epic_title = jira_issue['fields'].get('summary', 'No title')  # The title of the Jira issue (epic)
     epic_description = jira_issue['fields'].get('description', 'No description provided')  # The description of the epic
-    return epic_title, epic_description
-# Extract Jira keys from Pull Requests
+    
+    # extracting plain text only from description, avoiding any other format information
+    if isinstance(epic_description, dict) and 'content' in epic_description:
+        content_blocks = epic_description.get('content', [])
+        cleaned_description = []
+        for block in content_blocks:
+            if block['type'] == 'paragraph':
+                paragraph_text = " ".join([item.get('text', '') for item in block.get('content', []) if item.get('type') == 'text'])
+                cleaned_description.append(paragraph_text)
+        epic_description = "\n".join(cleaned_description) if cleaned_description else 'No description available'
+    
+    return epic_key, epic_title, epic_description
+
+def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
+    parent_key = jira_issue['fields'].get('parent', {}).get('key')
+    if parent_key:
+        parent_epic = get_jira_issue(parent_key, jira_url, jira_email, jira_token)
+        return get_epic_details(parent_epic)
+    return None, None, None
+
 def get_issues_from_pr(github_repo, pr_number):
     github_pull_request = github_repo.get_pull(pr_number)
     # Remove <!-- comments --> from issue body
@@ -35,18 +55,29 @@ def get_issues_from_pr(github_repo, pr_number):
     except:
         issue_body = ""
         pass
-    result = []
+
+    jira_keys = []
+    github_issues = []
+
     if issue_body:
-        # Get Jira keys from the PR description (Look for the "Related Jira Key" section)
-        result = re.findall('## Related Jira Key(.*)## End', issue_body, re.DOTALL)
-    if result:
-        # Convert the single string list to a multi-string list, grab Jira key (CF-123, Arc-123)
-        issues = "\n".join(result).split("\n")
-    else:
-        issues = []
-    # Clean up the Jira keys
-    issues = [s.strip() for s in issues if s]
-    return issues
+        # Get Jira keys only from the "Related Jira Key" section of PR's
+        jira_key_match = re.findall(r'Related Jira Key.*?(\[.*?\])?\(?([A-Z]+-\d+)\)?', issue_body, re.DOTALL)
+        if jira_key_match:
+            jira_keys = [match[1].strip() for match in jira_key_match if match[1].strip()]
+
+        # If no Jira keys found, check for GitHub Issues from the "Related GitHub Issue" section
+        if not jira_keys:
+            github_issue_match = re.findall(r'Related GitHub Issue.*?(\[.*?\])?\(?#(\d+)\)?', issue_body, re.DOTALL)
+            if github_issue_match:
+                github_issues = [f"#{match[1].strip()}" for match in github_issue_match if match[1].strip()]
+
+        # If neither Jira keys nor GitHub issues are found, use the PR title and description
+        if not jira_keys and not github_issues:
+            jira_keys = [f"PR Title: {github_pull_request.title.strip()}"]
+            github_issues = [f"PR Description: {github_pull_request.body.strip()[:100]}"]  # Trim description for length
+
+    return jira_keys, github_issues
+
 # Get repository list from GitHub
 def get_repo_list(github_org, github):
     repo_list = []
@@ -162,19 +193,27 @@ def release_notes():
                         commit_only.add(commit_title)
                 issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
                 pull_requests_missing_issues = set()
-                # Check Jira keys in PRs and fetch Epic details
+
+                # Check Jira keys and GitHub issues in PRs and fetch Epic details
                 if prr_list:
                     for pr in prr_list:
                         try:
-                            jira_keys = get_issues_from_pr(repo, pr.number)
+                            jira_keys, github_issues = get_issues_from_pr(repo, pr.number)                           
                             if jira_keys:
                                 for jira_key in jira_keys:
                                     jira_issue = get_jira_issue(jira_key, args.jira_url, args.jira_email, args.jira_token)
                                     if jira_issue:
-                                        epic_title, epic_description = get_epic_details(jira_issue)
-                                        issue_titles_enhancements.append(f"{epic_title}: {epic_description}")
-                                    else:
-                                        pull_requests_missing_issues.add(pr.title.strip() + f" (Pull Request [#{pr.number}]({pr.html_url}))")
+                                        epic_key, epic_title, epic_description = get_parent_epic(jira_issue, args.jira_url, args.jira_email, args.jira_token)
+                                        if epic_title:
+                                            issue_titles_enhancements.append(f"{epic_key} - {epic_title}: {epic_description}")
+                                        else:
+                                            pull_requests_missing_issues.add(pr.title.strip() + f" (Pull Request [#{pr.number}]({pr.html_url}))")
+
+                            # Fallback to GitHub Issues
+                            elif github_issues:
+                                issue_titles_bugs.extend(github_issues)
+
+                            # Fallback to PR description and title at the end if no Issues are found.
                             else:
                                 pull_requests_missing_issues.add(pr.title.strip() + f" (Pull Request [#{pr.number}]({pr.html_url}))")
                         except Exception as e:
@@ -216,5 +255,9 @@ if __name__ == "__main__":
     parser.add_argument("--jira-email", required=True)  
     parser.add_argument("--jira-token", required=True)
     args = parser.parse_args()
-    logging.basicConfig(level=logging.INFO, format="%(message)s", handlers=[logging.StreamHandler()])
-    release_notes()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(message)s",
+        handlers=[logging.StreamHandler()],
+    )
