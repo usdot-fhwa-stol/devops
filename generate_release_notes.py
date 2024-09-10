@@ -31,6 +31,7 @@ def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
     
     if parent_field:
         epic_key = parent_field['key']  # Get the parent epic's key
+        logging.info(f"Fetching parent epic for issue: {jira_issue['key']}, parent epic key: {epic_key}")
         epic = get_jira_issue(epic_key, jira_url, jira_email, jira_token)
 
         if epic:
@@ -51,7 +52,13 @@ def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
             if len(epic_description) > 300:
                 epic_description = epic_description[:300] + "..."
 
+            logging.info(f"Parent epic found: {epic_key} - {epic_title}")
             return epic_key, epic_title, epic_description
+        else:
+            logging.warning(f"Failed to fetch parent epic details for epic key: {epic_key}")
+    else:
+        logging.warning(f"No parent epic found for issue: {jira_issue['key']}")
+
     return None, None, None
 
 
