@@ -56,7 +56,7 @@ jobs:
           --jira-email "$MY_JIRA_EMAIL" \
           --jira-token "$MY_JIRA_TOKEN"
     - name: Archive release notes
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         if-no-files-found: error
         name: Release_Notes_${{ github.event.inputs.version }}.md
