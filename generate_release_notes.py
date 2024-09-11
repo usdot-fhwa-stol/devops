@@ -96,15 +96,15 @@ def get_repo(repo_name, github):
         sys.exit(1)
     return repo
 
-def get_release_notes(name, version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues):
+def get_release_notes(name, version, issue_titles_bugs, issue_titles_epics, issue_titles_other, commit_only, pull_requests_missing_issues):
     release_notes = f"\n\n## {name} - {version}\n"
     if issue_titles_bugs:
         release_notes += "\n\n#### Bugs & Anomalies\n"
         release_notes += "* " + "\n* ".join(sorted(set(issue_titles_bugs)))
 
-    if issue_titles_enhancements:
-        release_notes += "\n\n#### Enhancements\n"
-        release_notes += "* " + "\n* ".join(sorted(set(issue_titles_enhancements)))
+    if issue_titles_epics:
+        release_notes += "\n\n#### Jira Epics\n"
+        release_notes += "* " + "\n* ".join(sorted(set(issue_titles_epics)))
 
     if issue_titles_other:
         release_notes += "\n\n#### Other Issues\n"
