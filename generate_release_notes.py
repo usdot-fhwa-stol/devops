@@ -5,7 +5,7 @@ import logging
 import pathlib
 import re
 import sys
-
+import requests
 # Lists to track skipped repositories and PRs
 skipped_repos = []
 skipped_prs = []
