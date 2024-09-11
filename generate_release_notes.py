@@ -118,7 +118,8 @@ def get_release_notes(name, version, issue_titles_bugs, issue_titles_epics, issu
         release_notes += "\n\n#### PRs Missing Issues\n"
         release_notes += "* " + "\n* ".join(sorted(pull_requests_missing_issues))
     return release_notes
-# TODO add blacklisted repo's here before merging this changes to main brnach
+
+# Check if a repository is blacklisted and add it here
 def is_blacklisted_repo(repo_name):
     blacklist = [
         "usdot-fhwa-stol/documentation",
@@ -191,23 +192,23 @@ def release_notes():
                         commit_url = found_commit.commit.html_url[:-34]
                         commit_title = "{} (Commit [{}])".format(found_commit.commit.message.strip().split('\n', 1)[0], found_commit.commit.sha[:6])
                         commit_only.add(commit_title)
-                issue_titles_bugs, issue_titles_enhancements, issue_titles_other = [], [], []
+                issue_titles_bugs, issue_titles_epics, issue_titles_other = [], [], []
                 pull_requests_missing_issues = set()
 
                 # Check Jira keys and GitHub issues in PRs and fetch Epic details
                 if prr_list:
                     for pr in prr_list:
                         try:
-                            jira_keys, github_issues = get_issues_from_pr(repo, pr.number)                           
+                            jira_keys, github_issues = get_issues_from_pr(repo, pr.number)
                             if jira_keys:
                                 for jira_key in jira_keys:
                                     jira_issue = get_jira_issue(jira_key, args.jira_url, args.jira_email, args.jira_token)
                                     if jira_issue:
                                         epic_key, epic_title, epic_description = get_parent_epic(jira_issue, args.jira_url, args.jira_email, args.jira_token)
                                         if epic_title:
-                                            issue_titles_enhancements.append(f"{epic_key} - {epic_title}: {epic_description}")
+                                            issue_titles_epics.append(f"{epic_key} - {epic_title}: {epic_description}")
                                         else:
-                                            pull_requests_missing_issues.add(pr.title.strip() + f" (Pull Request [#{pr.number}]({pr.html_url}))")
+                                            issue_titles_epics.append(f"{jira_key}: No parent epic assigned.") 
 
                             # Fallback to GitHub Issues
                             elif github_issues:
@@ -222,7 +223,7 @@ def release_notes():
                 else:
                     logging.warning(f"No pull requests found for repo {repo.name}")
                 # Generate release notes for repo
-                release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_enhancements, issue_titles_other, commit_only, pull_requests_missing_issues)
+                release_notes += get_release_notes(repo.name, args.version, issue_titles_bugs, issue_titles_epics, issue_titles_other, commit_only, pull_requests_missing_issues)
                 logging.info('Generated release note for repo: ' + github_repo)
         # write skipped repositories and PRs to the release notes
         if skipped_repos:
