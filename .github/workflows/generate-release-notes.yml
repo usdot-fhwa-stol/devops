@@ -1,5 +1,4 @@
 name: Generate Release Notes
-
 on:
   workflow_dispatch:
     inputs:
@@ -25,12 +24,11 @@ on:
         description: 'Version number to use in release notes'
         required: true
         type: string
-
 jobs:
   generate-release-notes:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 1
     - name: Set up Python
@@ -42,17 +40,23 @@ jobs:
         python -m pip install -r generate-release-notes_requirements.txt
     - name: Generate release notes
       env:
-        DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+        STOL_JIRA_URL: ${{ secrets.STOL_JIRA_URL }}
+        STOL_JIRA_EMAIL: ${{ secrets.STOL_JIRA_EMAIL }}
+        STOL_JIRA_TOKEN: ${{ secrets.STOL_JIRA_TOKEN }}
       run: |
         ./generate_release_notes.py \
-          --github-token "$DEVOPS_GITHUB_TOKEN" \
+          --github-token "$GITHUB_TOKEN" \
           --organizations ${{ github.event.inputs.organization }} \
           --output-file Release_Notes_${{ github.event.inputs.version }}.md \
           --release-branch ${{ github.event.inputs.release_branch }} \
           --stable-branch ${{ github.event.inputs.stable_branch }} \
-          --version ${{ github.event.inputs.version }}
+          --version ${{ github.event.inputs.version }} \
+          --jira-url "$STOL_JIRA_URL" \
+          --jira-email "$STOL_JIRA_EMAIL" \
+          --jira-token "$STOL_JIRA_TOKEN"
     - name: Archive release notes
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         if-no-files-found: error
         name: Release_Notes_${{ github.event.inputs.version }}.md
