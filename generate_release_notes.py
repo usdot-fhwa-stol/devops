@@ -112,15 +112,14 @@ def get_issues_from_pr(github_repo, pr_number):
 
 def get_repo_list(github_org, github):
     """
-    Get the list of repositories for a given GitHub organization.
-
+    Get the list of repositories for the given GitHub organization from input.
     Args:
         github_org (str): The GitHub organization name.
-        github (github.Github): The GitHub object.
-
+        github (Github): The authenticated GitHub instance.
     Returns:
-        list: Sorted list of repository full names.
+        list: A sorted list of full repository names for the organization.
     """
+    repo_list = []
     for repo in github.get_organization(github_org).get_repos():
         repo_list.append(repo.full_name)
     return sorted(repo_list)
