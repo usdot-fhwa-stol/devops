@@ -1,16 +1,29 @@
 #!/usr/bin/env python3
-from github import Github
 import argparse
 import logging
 import pathlib
 import re
 import sys
 import requests
+from github import Github
+
 # Lists to track skipped repositories and PRs
 skipped_repos = []
 skipped_prs = []
-# Function to get Jira issue details based on the Jira key
+
 def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
+    """
+    Function to get Jira issue details based on the Jira key.
+
+    Args:
+        issue_key (str): The Jira issue key (example, C1T-1234).
+        jira_url (str): Jira base URL.
+        jira_email (str): Jira email for authentication.
+        jira_token (str): Jira token for authentication.
+
+    Returns:
+        dict: JSON response with issue details if successful, None otherwise.
+    """
     url = f"{jira_url}/rest/api/3/issue/{issue_key}"
     auth = (jira_email, jira_token)
     headers = {"Accept": "application/json"}
@@ -21,12 +34,20 @@ def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
         logging.error(f"Failed to fetch Jira issue {issue_key}: {response.status_code} - {response.text}")
         return None
 
-# Function to extract the Jira epic's title and description information 
 def get_epic_details(jira_issue):
-    epic_key = jira_issue['key']  # Capture the Epic key (e.g., C1T-1234 or any other format key)
-    epic_title = jira_issue['fields'].get('summary', 'No title')  # The title of the Jira issue (epic)
-    epic_description = jira_issue['fields'].get('description', 'No description provided')  # The description of the epic
-    
+    """
+    Extract the Jira epic's title and description.
+
+    Args:
+        jira_issue (dict): The JSON response for a Jira issue.
+
+    Returns:
+        tuple: A tuple containing the epic key, title, and description.
+    """
+    epic_key = jira_issue['key']
+    epic_title = jira_issue['fields'].get('summary', 'No title')
+    epic_description = jira_issue['fields'].get('description', 'No description provided')
+
     # extracting plain text only from description, avoiding any other format information
     if isinstance(epic_description, dict) and 'content' in epic_description:
         content_blocks = epic_description.get('content', [])
@@ -40,6 +61,18 @@ def get_epic_details(jira_issue):
     return epic_key, epic_title, epic_description
 
 def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
+    """
+    Get the parent epic of a Jira story or task.
+
+    Args:
+        jira_issue (dict): The JSON response for a Jira issue.
+        jira_url (str): Jira base URL.
+        jira_email (str): Jira email for authentication.
+        jira_token (str): Jira token for authentication.
+
+    Returns:
+        tuple: The epic key, title, and description, or None if no parent is found.
+    """
     parent_key = jira_issue['fields'].get('parent', {}).get('key')
     if parent_key:
         parent_epic = get_jira_issue(parent_key, jira_url, jira_email, jira_token)
@@ -77,10 +110,17 @@ def get_issues_from_pr(github_repo, pr_number):
 
     return jira_keys, github_issues
 
-# Get repository list from GitHub
 def get_repo_list(github_org, github):
-    repo_list = []
+    """
+    Get the list of repositories for a given GitHub organization.
 
+    Args:
+        github_org (str): The GitHub organization name.
+        github (github.Github): The GitHub object.
+
+    Returns:
+        list: Sorted list of repository full names.
+    """
     for repo in github.get_organization(github_org).get_repos():
         repo_list.append(repo.full_name)
     return sorted(repo_list)
