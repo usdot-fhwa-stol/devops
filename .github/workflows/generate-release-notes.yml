@@ -41,9 +41,9 @@ jobs:
     - name: Generate release notes
       env:
         GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
-        JIRA_URL: ${{ secrets.JIRA_URL }}
-        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-        JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+        STOL_JIRA_URL: ${{ secrets.JIRA_URL }}
+        STOL_JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        STOL_JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
       run: |
         ./generate_release_notes.py \
           --github-token "$GITHUB_TOKEN" \
@@ -52,9 +52,9 @@ jobs:
           --release-branch ${{ github.event.inputs.release_branch }} \
           --stable-branch ${{ github.event.inputs.stable_branch }} \
           --version ${{ github.event.inputs.version }} \
-          --jira-url "$JIRA_URL" \
-          --jira-email "$JIRA_EMAIL" \
-          --jira-token "$JIRA_TOKEN"
+          --jira-url "$STOL_JIRA_URL" \
+          --jira-email "$STOL_JIRA_EMAIL" \
+          --jira-token "$STOL_JIRA_TOKEN"
     - name: Archive release notes
       uses: actions/upload-artifact@v4
       with:
