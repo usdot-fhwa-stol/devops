@@ -40,21 +40,21 @@ jobs:
         python -m pip install -r generate-release-notes_requirements.txt
     - name: Generate release notes
       env:
-        MY_GITHUB_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }}
-        MY_JIRA_URL: ${{ secrets.MY_JIRA_URL }}
-        MY_JIRA_EMAIL: ${{ secrets.MY_JIRA_EMAIL }}
-        MY_JIRA_TOKEN: ${{ secrets.MY_JIRA_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+        JIRA_URL: ${{ secrets.JIRA_URL }}
+        JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+        JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
       run: |
         ./generate_release_notes.py \
-          --github-token "$MY_GITHUB_TOKEN" \
+          --github-token "$GITHUB_TOKEN" \
           --organizations ${{ github.event.inputs.organization }} \
           --output-file Release_Notes_${{ github.event.inputs.version }}.md \
           --release-branch ${{ github.event.inputs.release_branch }} \
           --stable-branch ${{ github.event.inputs.stable_branch }} \
           --version ${{ github.event.inputs.version }} \
-          --jira-url "$MY_JIRA_URL" \
-          --jira-email "$MY_JIRA_EMAIL" \
-          --jira-token "$MY_JIRA_TOKEN"
+          --jira-url "$JIRA_URL" \
+          --jira-email "$JIRA_EMAIL" \
+          --jira-token "$JIRA_TOKEN"
     - name: Archive release notes
       uses: actions/upload-artifact@v4
       with:
