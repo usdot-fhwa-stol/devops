@@ -104,6 +104,7 @@ def get_issues_from_pr(github_repo, pr_number):
     Args:
         github_repo (Repository): The GitHub repository object.
         pr_number (int): The number of the pull request.
+        jira_key (str): The Jira issue key (example, 'C1T-1234').
 
     Returns:
         tuple: Lists of Jira keys and GitHub issues.
@@ -188,7 +189,7 @@ def get_release_notes(name, version, issue_titles_epics,
 
     # List of Jira Epics
     if issue_titles_epics:
-        notes_content += "\n### List of Jira Epics\n"
+        notes_content += "\n **List of Jira Epics** \n"
         for epic in sorted(issue_titles_epics):
             epic_parts = epic.split(' - ')
             epic_key = epic_parts[0]
@@ -196,21 +197,21 @@ def get_release_notes(name, version, issue_titles_epics,
             epic_description = epic_parts[2] if len(epic_parts) > 2 else ""
             pr_number = pr_mapping.get(epic_key, "N/A")
             if epic_description:
-                notes_content += f"Epic ### {epic_key}: {epic_title}: {epic_description} (GitHub PR #{pr_number})\n"
+                notes_content += f"* **{epic_key}: {epic_title}**: {epic_description} (GitHub PR #{pr_number})\n"
             else:
-                notes_content += f"Epic ### {epic_key}: {epic_title} (GitHub PR #{pr_number})\n"
+                notes_content += f"* **{epic_key}: {epic_title}** (GitHub PR #{pr_number})\n"
     else:
         notes_content += "\n### No Jira Epics Found\n"
 
     if issue_titles_other:
-        notes_content += "\n### List of Other Jira Items (Bugs, Tasks, Anomalies)\n"
+        notes_content += "\n**List of other Jira Items** (e.g., Story/Bug/Anomaly/Task)\n"
         for item in issue_titles_other:
-            notes_content += f"Jira Item ###: {item}\n"
+            notes_content += f"* Jira Item: {item}\n"
     else:
-        notes_content += "\n### No Other Jira Items Found\n"
+        notes_content += "\n**No Other Jira Items Found**\n"
 
     if pull_requests_missing_epics:
-        notes_content += "\n### List of GitHub PRs Missing Epics and Issues\n"
+        notes_content += "\n**List of GitHub PRs Missing Jira Epics and GitHub Issues**\n"
         for pr in pull_requests_missing_epics:
             if ':' in pr:
                 parts = pr.split(': ', 1)
@@ -219,17 +220,17 @@ def get_release_notes(name, version, issue_titles_epics,
             else:
                 pr_title = pr
                 pr_description = "No description"
-            notes_content += f"PR ###: {pr_title}: {pr_description} (Commit ###)\n"
+            notes_content += f"* PR: {pr_title}: {pr_description} (Commit ###)\n"
     else:
-        notes_content += "\n### No PRs Missing Epics or GitHub Issues Found\n"
+        notes_content += "\n**No PRs Missing Epics or GitHub Issues Found**\n"
 
     if commit_only:
-        notes_content += "\n### List of Orphaned Commits\n"
+        notes_content += "\n**List of Orphaned Commits**\n"
         for commit in commit_only:
             commit_title = commit.split(': ', 1)[0]
-            notes_content += f"Commit ###: {commit_title}\n"
+            notes_content += f"* Commit: {commit_title}\n"
     else:
-        notes_content += "\n### No Orphaned Commits Found\n"
+        notes_content += "\n**No Orphaned Commits Found**\n"
 
     return notes_content
 
