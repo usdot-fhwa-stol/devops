@@ -169,7 +169,7 @@ def get_repo(repo_name, github):
     return repo
 
 def get_release_notes(name, version, issue_titles_epics,
-                      issue_titles_other, commit_only, pull_requests_missing_epics, pr_mapping):
+                      issue_titles_other, github_issues, pr_missing_jira_issues, commit_only, pr_mapping):
     """
     Format release notes for the given repository.
 
@@ -178,8 +178,9 @@ def get_release_notes(name, version, issue_titles_epics,
         version (str): The release version.
         issue_titles_epics (set): Titles of unique Jira epics.
         issue_titles_other (list): Titles of other issues.
+        github_issues (list): GitHub issues.
+        pr_missing_jira_issues (list): PRs missing Jira items or GitHub issues.
         commit_only (list): Commits missing issues.
-        pull_requests_missing_epics (list): PRs missing epics and GitHub issues.
         pr_mapping (dict): Mapping of Jira epics to GitHub PR numbers.
 
     Returns:
@@ -188,8 +189,8 @@ def get_release_notes(name, version, issue_titles_epics,
     notes_content = f"\n\n## {name} - {version}\n"
 
     # List of Jira Epics
+    notes_content += "\n**List of Jira Epics**\n"
     if issue_titles_epics:
-        notes_content += "\n **List of Jira Epics** \n"
         for epic in sorted(issue_titles_epics):
             epic_parts = epic.split(' - ')
             epic_key = epic_parts[0]
@@ -197,40 +198,44 @@ def get_release_notes(name, version, issue_titles_epics,
             epic_description = epic_parts[2] if len(epic_parts) > 2 else ""
             pr_number = pr_mapping.get(epic_key, "N/A")
             if epic_description:
-                notes_content += f"* **{epic_key}: {epic_title}**: {epic_description} (GitHub PR #{pr_number})\n"
+                notes_content += f"* {epic_key}: {epic_title}: {epic_description} (GitHub PR #{pr_number})\n"
             else:
-                notes_content += f"* **{epic_key}: {epic_title}** (GitHub PR #{pr_number})\n"
+                notes_content += f"* {epic_key}: {epic_title} (GitHub PR #{pr_number})\n"
     else:
-        notes_content += "\n### No Jira Epics Found\n"
+        notes_content += "No Jira epics found\n"
 
+    # List of other Jira Items
+    notes_content += "\n**List of other Jira Items (e.g. Story/Bug/Anomaly/Task)**\n"
     if issue_titles_other:
-        notes_content += "\n**List of other Jira Items** (e.g., Story/Bug/Anomaly/Task)\n"
         for item in issue_titles_other:
-            notes_content += f"* Jira Item: {item}\n"
+            notes_content += f"* {item}\n"
     else:
-        notes_content += "\n**No Other Jira Items Found**\n"
+        notes_content += "No other Jira items found\n"
 
-    if pull_requests_missing_epics:
-        notes_content += "\n**List of GitHub PRs Missing Jira Epics and GitHub Issues**\n"
-        for pr in pull_requests_missing_epics:
-            if ':' in pr:
-                parts = pr.split(': ', 1)
-                pr_title = parts[0]
-                pr_description = parts[1] if len(parts) > 1 else "No description"
-            else:
-                pr_title = pr
-                pr_description = "No description"
-            notes_content += f"* PR: {pr_title}: {pr_description} (Commit ###)\n"
+    # List of GitHub Issues
+    notes_content += "\n**List of GitHub Issues**\n"
+    if github_issues:
+        for issue in github_issues:
+            notes_content += f"* {issue}\n"
     else:
-        notes_content += "\n**No PRs Missing Epics or GitHub Issues Found**\n"
+        notes_content += "No GitHub issues found\n"
 
+    # List of GitHub PRs (no Jira Item or GitHub Issue)
+    notes_content += "\n**List of GitHub PRs (no Jira Item or GitHub Issue)**\n"
+    if pr_missing_jira_issues:
+        for pr in pr_missing_jira_issues:
+            notes_content += f"* {pr}\n"
+    else:
+        notes_content += "No GitHub PRs found\n"
+
+    # List of Orphaned Commits
+    notes_content += "\n**List of Orphaned Commits**\n"
     if commit_only:
-        notes_content += "\n**List of Orphaned Commits**\n"
         for commit in commit_only:
             commit_title = commit.split(': ', 1)[0]
             notes_content += f"* Commit: {commit_title}\n"
     else:
-        notes_content += "\n**No Orphaned Commits Found**\n"
+        notes_content += "No Orphaned Commits found\n"
 
     return notes_content
 
@@ -324,13 +329,13 @@ def release_notes(parsed_args):
                         )
                         commit_only.add(commit_title)
 
-                issue_titles_epics, issue_titles_other = set(), []
+                issue_titles_epics, issue_titles_other, github_issues = set(), [], []
                 pull_requests_missing_epics = set()
 
                 if prr_list:
                     for pr in prr_list:
                         try:
-                            jira_keys, github_issues = get_issues_from_pr(repo, pr.number)
+                            jira_keys, pr_github_issues = get_issues_from_pr(repo, pr.number)
                             if jira_keys:
                                 for jira_key in jira_keys:
                                     jira_issue = get_jira_issue(jira_key, parsed_args.jira_url, parsed_args.jira_email, parsed_args.jira_token)
@@ -345,8 +350,8 @@ def release_notes(parsed_args):
                                                 f"{pr.title.strip()} (Pull Request [#{pr.number}]({pr.html_url})) - Epic missing"
                                             )
 
-                            elif github_issues:
-                                issue_titles_other.extend(github_issues)
+                            elif pr_github_issues:
+                                github_issues.extend(pr_github_issues)
 
                             else:
                                 pull_requests_missing_epics.add(f"{pr.title.strip()} (Pull Request [#{pr.number}]({pr.html_url}))")
@@ -356,15 +361,17 @@ def release_notes(parsed_args):
 
                 notes += get_release_notes(
                     repo.name, parsed_args.version, issue_titles_epics,
-                    issue_titles_other, commit_only, pull_requests_missing_epics, pr_mapping
+                    issue_titles_other, github_issues, pull_requests_missing_epics, commit_only, pr_mapping
                 )
                 logging.info("Generated release note for repo: %s", github_repo)
 
         if skipped_repos:
-            notes += "\n\n### Skipped Repositories\n" + "\n".join(skipped_repos)
+            notes += "\n\n**Skipped Repositories**\n"
+            notes += "\n".join([f"* {repo}" for repo in skipped_repos])
 
         if skipped_prs:
-            notes += "\n\n### Skipped Pull Requests\n" + "\n".join(skipped_prs)
+            notes += "\n\n**Skipped Pull Requests**\n"
+            notes += "\n".join([f"* {pr}" for pr in skipped_prs])
 
         pathlib.Path(parsed_args.output_file).unlink(missing_ok=True)
         with open(parsed_args.output_file, "w", encoding="utf-8") as file:
@@ -375,6 +382,23 @@ def release_notes(parsed_args):
         sys.exit(1)
 
 if __name__ == "__main__":
+
+    # This is Main execution block for generating release notes
+    # by comparing branches in each GitHub repo
+    # and fetching associated Jira Issue details.
+
+    # Below are following command-line arguments that are required for execution:  
+    # - --github-token: GitHub personal access token for authenticating API requests.
+    # - --release-branch: The release branch to compare changes from (e.g., 'release/omega').
+    # - --stable-branch: The stable branch to compare against (default is 'master').
+    # - --organizations: A GitHub organization to process.(default can be either one of these three usdot-fhwa-stol, usdot-fhwa-ops,usdot-jpo-ode)
+    # - --output-file: Path to the output file where the release notes will be saved, We can dowload generated markdown file from github artifacts.
+    # - --jira-url: The Jira base URL (default is 'https://usdot-carma.atlassian.net/').
+    # - --jira-email: The email for authenticating Jira API requests.
+    # - --jira-token: The Jira API token for authenticating requests.
+
+    # This block parses the input arguments, sets up logging, and triggers the generation
+    # of release notes by calling the release_notes() function.
     parser = argparse.ArgumentParser()
     parser.add_argument("--github-token", required=True)
     parser.add_argument("--release-branch", required=True)
