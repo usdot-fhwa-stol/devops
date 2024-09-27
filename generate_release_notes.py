@@ -386,29 +386,16 @@ if __name__ == "__main__":
     # This is Main execution block for generating release notes
     # by comparing branches in each GitHub repo
     # and fetching associated Jira Issue details.
-
-    # Below are following command-line arguments that are required for execution:  
-    # - --github-token: GitHub personal access token for authenticating API requests.
-    # - --release-branch: The release branch to compare changes from (e.g., 'release/omega').
-    # - --stable-branch: The stable branch to compare against (default is 'master').
-    # - --organizations: A GitHub organization to process.(default can be either one of these three usdot-fhwa-stol, usdot-fhwa-ops,usdot-jpo-ode)
-    # - --output-file: Path to the output file where the release notes will be saved, We can dowload generated markdown file from github artifacts.
-    # - --jira-url: The Jira base URL (default is 'https://usdot-carma.atlassian.net/').
-    # - --jira-email: The email for authenticating Jira API requests.
-    # - --jira-token: The Jira API token for authenticating requests.
-
-    # This block parses the input arguments, sets up logging, and triggers the generation
-    # of release notes by calling the release_notes() function.
     parser = argparse.ArgumentParser()
-    parser.add_argument("--github-token", required=True)
-    parser.add_argument("--release-branch", required=True)
-    parser.add_argument("--stable-branch", required=True)
-    parser.add_argument("--organizations", nargs="+", required=True)
-    parser.add_argument("--output-file", required=True)
-    parser.add_argument("--version", required=True)
-    parser.add_argument("--jira-url", required=True)
-    parser.add_argument("--jira-email", required=True)
-    parser.add_argument("--jira-token", required=True)
+    parser.add_argument("--github-token", required=True, help="GitHub personal access token for authenticating API requests.")
+    parser.add_argument("--release-branch", required=True, help="The release branch to compare changes from (e.g., 'release/omega').")
+    parser.add_argument("--stable-branch", default="master", help="The stable branch to compare against. Defaults to 'master'.")
+    parser.add_argument("--organizations", default="usdot-fhwa-stol", nargs="+", required=True, help="List of GitHub organizations to process default can be either one of these three usdot-fhwa-stol, usdot-fhwa-ops,usdot-jpo-ode.")
+    parser.add_argument("--output-file", required=True, help="Path to the output file where the release notes will be saved.")
+    parser.add_argument("--version", required=True , help="Version number")
+    parser.add_argument("--jira-url", default="https://usdot-carma.atlassian.net/", help="The Jira base URL (default is 'https://usdot-carma.atlassian.net/')")
+    parser.add_argument("--jira-email", required=True, help=" Jira Email for authenticating Jira API requests.")
+    parser.add_argument("--jira-token", required=True, help="Jira API token for authenticating requests.")
     args = parser.parse_args()
 
     logging.basicConfig(
