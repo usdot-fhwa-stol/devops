@@ -48,17 +48,18 @@ def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
 
 def get_epic_details(jira_issue):
     """
-    Extract the Jira epic's title and description.
+    Extract the Jira epic's title, description, and status.
 
     Args:
         jira_issue (dict): The JSON response for a Jira issue.
 
     Returns:
-        tuple: A tuple containing the epic key, title, and description.
+        tuple: A tuple containing the epic key, title, description, and status.
     """
     epic_key = jira_issue['key']
     epic_title = jira_issue['fields'].get('summary', 'No title')
     epic_description = jira_issue['fields'].get('description', 'No description provided')
+    epic_status = jira_issue['fields'].get('status', {}).get('name', None)
 
     if isinstance(epic_description, dict) and 'content' in epic_description:
         content_blocks = epic_description.get('content', [])
@@ -76,7 +77,7 @@ def get_epic_details(jira_issue):
             else 'No description available'
         )
 
-    return epic_key, epic_title, epic_description
+    return epic_key, epic_title, epic_description, epic_status
 
 def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
     """
@@ -89,13 +90,13 @@ def get_parent_epic(jira_issue, jira_url, jira_email, jira_token):
         jira_token (str): Jira token for authentication.
 
     Returns:
-        tuple: The epic key, title, and description, or None if no parent is found.
+        tuple: The epic key, title, description, and status, or None if no parent is found.
     """
     parent_key = jira_issue['fields'].get('parent', {}).get('key')
     if parent_key:
         parent_epic = get_jira_issue(parent_key, jira_url, jira_email, jira_token)
         return get_epic_details(parent_epic)
-    return None, None, None
+    return None, None, None, None
 
 def get_issues_from_pr(github_repo, pr_number):
     """
@@ -163,25 +164,24 @@ def get_repo(repo_name, github):
     try:
         repo = github.get_repo(repo_name)
     except GithubException as error:
-        logging.error("%s", error)
-        logging.error("%s", msg_failure)
+        logging.error("Error: %s. Message failure: %s", error, msg_failure)
         sys.exit(1)
     return repo
 
 def get_release_notes(name, version, issue_titles_epics,
                       issue_titles_other, github_issues, pr_missing_jira_issues, commit_only, pr_mapping):
     """
-    Format release notes for the given repository.
+    Generate formatted release notes for the given repository.
 
     Args:
         name (str): The repository name.
         version (str): The release version.
         issue_titles_epics (set): Titles of unique Jira epics.
-        issue_titles_other (list): Titles of other issues.
+        issue_titles_other (list): Titles of other Jira issues (e.g., Story, Bug, Anomaly).
         github_issues (list): GitHub issues.
         pr_missing_jira_issues (list): PRs missing Jira items or GitHub issues.
         commit_only (list): Commits missing issues.
-        pr_mapping (dict): Mapping of Jira epics to GitHub PR numbers.
+        pr_mapping (dict): Mapping of Jira epics to lists of GitHub PR numbers.
 
     Returns:
         str: Formatted release notes in markdown.
@@ -195,12 +195,13 @@ def get_release_notes(name, version, issue_titles_epics,
             epic_parts = epic.split(' - ')
             epic_key = epic_parts[0]
             epic_title = epic_parts[1] if len(epic_parts) > 1 else ""
-            epic_description = epic_parts[2] if len(epic_parts) > 2 else ""
-            pr_number = pr_mapping.get(epic_key, "N/A")
-            if epic_description:
-                notes_content += f"* {epic_key}: {epic_title}: {epic_description} (GitHub PR #{pr_number})\n"
-            else:
-                notes_content += f"* {epic_key}: {epic_title} (GitHub PR #{pr_number})\n"
+            epic_description = epic_parts[2] if len(epic_parts) >2 and epic_parts[2] else "No description provided"  
+            epic_status = epic_parts[3] if len(epic_parts) > 3 and epic_parts[3] else "No status provided" 
+            pr_numbers = pr_mapping.get(epic_key, [])
+            pr_list = ', '.join([f"#{pr}" for pr in pr_numbers]) if pr_numbers else "N/A"
+            notes_content += f"* {epic_key}: {epic_title} (Status: {epic_status}): "
+            notes_content += f"{epic_description}. (GitHub PR {pr_list})\n"
+
     else:
         notes_content += "No Jira epics found\n"
 
@@ -340,11 +341,11 @@ def release_notes(parsed_args):
                                 for jira_key in jira_keys:
                                     jira_issue = get_jira_issue(jira_key, parsed_args.jira_url, parsed_args.jira_email, parsed_args.jira_token)
                                     if jira_issue:
-                                        epic_key, epic_title, epic_description = get_parent_epic(
+                                        epic_key, epic_title, epic_description, epic_status = get_parent_epic(
                                             jira_issue, parsed_args.jira_url, parsed_args.jira_email, parsed_args.jira_token)
                                         if epic_title:
-                                            issue_titles_epics.add(f"{epic_key} - {epic_title}: {epic_description}")
-                                            pr_mapping[epic_key] = pr.number
+                                            issue_titles_epics.add(f"{epic_key} - {epic_title}- (status: {epic_status}): {epic_description}")
+                                            pr_mapping.setdefault(epic_key, []).append(pr.number)
                                         else:
                                             pull_requests_missing_epics.add(
                                                 f"{pr.title.strip()} (Pull Request [#{pr.number}]({pr.html_url})) - Epic missing"
