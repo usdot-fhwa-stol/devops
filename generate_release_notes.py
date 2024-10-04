@@ -30,7 +30,9 @@ def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
     Returns:
         dict: JSON response with issue details if successful, None otherwise.
     """
-    url = f"{jira_url}/rest/api/3/issue/{issue_key}"
+    # Query parameter to restrict fields returned for issues. Without this parameter all fields are returned.
+    fields="summary,issuetype,status,description,key,epic,parent"
+    url = f"{jira_url}/rest/api/3/issue/{issue_key}?fields={fields}"
     auth = (jira_email, jira_token)
     headers = {"Accept": "application/json"}
 
@@ -128,10 +130,9 @@ def get_issues_from_pr(github_repo, pr_number):
             github_issue_match = re.findall(r'Related GitHub Issue.*?(\[[^\]]*\])?\(?#(\d+)\)?', issue_body, re.DOTALL)
             if github_issue_match:
                 github_issues = [f"#{match[1].strip()}" for match in github_issue_match if match[1].strip()]
-
+        # If no github issue or jira issue is found, PR is orphan
         if not jira_keys and not github_issues:
-            jira_keys = [f"PR Title: {github_pull_request.title.strip()}"]
-            github_issues = [f"PR Description: {github_pull_request.body.strip()[:100]}"]
+            return None, None
 
     return jira_keys, github_issues
 
@@ -191,16 +192,15 @@ def get_release_notes(name, version, issue_titles_epics,
     # List of Jira Epics
     notes_content += "\n**List of Jira Epics**\n"
     if issue_titles_epics:
-        for epic in sorted(issue_titles_epics):
-            epic_parts = epic.split(' - ')
-            epic_key = epic_parts[0]
-            epic_title = epic_parts[1] if len(epic_parts) > 1 else ""
-            epic_description = epic_parts[2] if len(epic_parts) >2 and epic_parts[2] else "No description provided"  
-            epic_status = epic_parts[3] if len(epic_parts) > 3 and epic_parts[3] else "No status provided" 
+        for epic_fields in sorted(issue_titles_epics):
+            epic_key = epic_fields[0]
+            epic_title = epic_fields[1]
+            epic_description = epic_fields[2] if len(epic_fields) >2 and epic_fields[2] else "No description provided"
+            epic_status = epic_fields[3] if len(epic_fields) > 3 and epic_fields[3] else "No status provided" 
             pr_numbers = pr_mapping.get(epic_key, [])
             pr_list = ', '.join([f"#{pr}" for pr in pr_numbers]) if pr_numbers else "N/A"
             notes_content += f"* {epic_key}: {epic_title} (Status: {epic_status}): "
-            notes_content += f"{epic_description}. (GitHub PR {pr_list})\n"
+            notes_content += f"{epic_description}. (GitHub PRs {pr_list})\n"
 
     else:
         notes_content += "No Jira epics found\n"
@@ -330,8 +330,7 @@ def release_notes(parsed_args):
                         )
                         commit_only.add(commit_title)
 
-                issue_titles_epics, issue_titles_other, github_issues = set(), [], []
-                pull_requests_missing_epics = set()
+                issue_titles_epics, issue_titles_other, pull_requests_missing_epics, github_issues = [], [], [], []
 
                 if prr_list:
                     for pr in prr_list:
@@ -344,18 +343,19 @@ def release_notes(parsed_args):
                                         epic_key, epic_title, epic_description, epic_status = get_parent_epic(
                                             jira_issue, parsed_args.jira_url, parsed_args.jira_email, parsed_args.jira_token)
                                         if epic_title:
-                                            issue_titles_epics.add(f"{epic_key} - {epic_title}- (status: {epic_status}): {epic_description}")
+                                            # Create a list of epic fields for each epic including key, title, status and description
+                                            issue_titles_epics.append([epic_key,epic_title, epic_description, epic_status,])
                                             pr_mapping.setdefault(epic_key, []).append(pr.number)
                                         else:
-                                            pull_requests_missing_epics.add(
-                                                f"{pr.title.strip()} (Pull Request [#{pr.number}]({pr.html_url})) - Epic missing"
+                                            issue_titles_other.append(
+                                                f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']}) - Epic missing"
                                             )
 
                             elif pr_github_issues:
-                                github_issues.extend(pr_github_issues)
+                                github_issues.append(pr_github_issues)
 
                             else:
-                                pull_requests_missing_epics.add(f"{pr.title.strip()} (Pull Request [#{pr.number}]({pr.html_url}))")
+                                pull_requests_missing_epics.append(f"{pr.title.strip()} (Pull Request [#{pr.number}]({pr.html_url}))")
                         except GithubException as error:
                             logging.error("Error processing PR #%d for repo %s: %s", pr.number, repo.name, error)
                             skipped_prs.append(f"PR #{pr.number} in repo {repo.name} failed to process")
