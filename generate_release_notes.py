@@ -169,7 +169,7 @@ def get_repo(repo_name, github):
         sys.exit(1)
     return repo
 
-def get_release_notes(name, version, issue_titles_epics,
+def get_release_notes(name, version, epic_set,
                       issue_titles_other, github_issues, pr_missing_jira_issues, commit_only, pr_mapping):
     """
     Generate formatted release notes for the given repository.
@@ -177,7 +177,7 @@ def get_release_notes(name, version, issue_titles_epics,
     Args:
         name (str): The repository name.
         version (str): The release version.
-        issue_titles_epics (set): Titles of unique Jira epics.
+        epic_set (set): Set of Jira epics. Each entry is a tuple of fields for a given epic.
         issue_titles_other (list): Titles of other Jira issues (e.g., Story, Bug, Anomaly).
         github_issues (list): GitHub issues.
         pr_missing_jira_issues (list): PRs missing Jira items or GitHub issues.
@@ -191,8 +191,8 @@ def get_release_notes(name, version, issue_titles_epics,
 
     # List of Jira Epics
     notes_content += "\n**List of Jira Epics**\n"
-    if issue_titles_epics:
-        for epic_fields in sorted(issue_titles_epics):
+    if epic_set:
+        for epic_fields in sorted(epic_set):
             epic_key = epic_fields[0]
             epic_title = epic_fields[1]
             epic_description = epic_fields[2] if len(epic_fields) >2 and epic_fields[2] else "No description provided"
@@ -330,8 +330,8 @@ def release_notes(parsed_args):
                         )
                         commit_only.add(commit_title)
 
-                issue_titles_epics, issue_titles_other, pull_requests_missing_epics, github_issues = [], [], [], []
-
+                issue_titles_other, pull_requests_missing_epics, github_issues = [], [], []
+                epic_set = set()
                 if prr_list:
                     for pr in prr_list:
                         try:
@@ -344,7 +344,7 @@ def release_notes(parsed_args):
                                             jira_issue, parsed_args.jira_url, parsed_args.jira_email, parsed_args.jira_token)
                                         if epic_title:
                                             # Create a list of epic fields for each epic including key, title, status and description
-                                            issue_titles_epics.append([epic_key,epic_title, epic_description, epic_status,])
+                                            epic_set.add((epic_key,epic_title, epic_description, epic_status))
                                             pr_mapping.setdefault(epic_key, []).append(pr.number)
                                         else:
                                             issue_titles_other.append(
@@ -361,7 +361,7 @@ def release_notes(parsed_args):
                             skipped_prs.append(f"PR #{pr.number} in repo {repo.name} failed to process")
 
                 notes += get_release_notes(
-                    repo.name, parsed_args.version, issue_titles_epics,
+                    repo.name, parsed_args.version, epic_set,
                     issue_titles_other, github_issues, pull_requests_missing_epics, commit_only, pr_mapping
                 )
                 logging.info("Generated release note for repo: %s", github_repo)
