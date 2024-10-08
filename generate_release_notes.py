@@ -317,18 +317,18 @@ def release_notes(parsed_args):
                 for found_commit in found_commits:
                     try:
                         pr_list = found_commit.get_pulls()
-                        if pr_list:
+                        if pr_list.totalCount > 0:
                             prr_list.update(list(pr_list))
+                        else:
+                            commit_title = "{} (Commit [{}])".format(
+                                found_commit.commit.message.strip().split('\n', 1)[0], found_commit.commit.sha[:6]
+                            )
+                            commit_only.add(commit_title)
                     except GithubException as error:
                         logging.warning(
                             "Failed to retrieve pull requests for commit %s: %s",
                             found_commit.sha, error)
                         skipped_prs.append(f"Commit {found_commit.sha} in repo {github_repo} could not retrieve PRs")
-                    else:
-                        commit_title = "{} (Commit [{}])".format(
-                            found_commit.commit.message.strip().split('\n', 1)[0], found_commit.commit.sha[:6]
-                        )
-                        commit_only.add(commit_title)
 
                 issue_titles_other, pull_requests_missing_epics, github_issues = [], [], []
                 epic_set = set()
