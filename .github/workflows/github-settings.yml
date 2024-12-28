@@ -1,6 +1,9 @@
 name: Scheduled GitHub Repo Settings Scan
 
 on:
+  push:
+    branches:
+      - arc-74_fix_repo_settings_auditscript
   schedule:
     # * is a special character in YAML so you have to quote this string
     - cron: "0 8 * * 1-5"
@@ -27,32 +30,32 @@ jobs:
       - name: Scan develop branches
         if: github.event.schedule == '0 8 * * 1-5'
         env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          DEVOPS_TOKEN: ${{ secrets.DEVOPS_TOKEN }}
         run: |
           ./audit-github-repo-settings.py \
             --branches develop \
-            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --github-token "$DEVOPS_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol usdot-jpo-ode
+            --organizations usdot-fhwa-stol usdot-fhwa-ops
 
       - name: Scan master branches
         if: github.event.schedule == '0 9 * * 1-5'
         env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          DEVOPS_TOKEN: ${{ secrets.DEVOPS_TOKEN }}
         run: |
           ./audit-github-repo-settings.py \
             --branches master \
-            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --github-token "$DEVOPS_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol usdot-jpo-ode
+            --organizations usdot-fhwa-stol usdot-fhwa-ops
 
       - name: Scan main branches
         if: github.event.schedule == '0 9 * * 1-5'
         env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          DEVOPS_TOKEN: ${{ secrets.DEVOPS_TOKEN }}
         run: |
           ./audit-github-repo-settings.py \
             --branches main \
-            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --github-token "$DEVOPS_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol usdot-jpo-ode
+            --organizations usdot-fhwa-stol usdot-fhwa-ops
