@@ -207,6 +207,12 @@ def tests(github_branch, repo, token):
         elif org == "usdot-jpo-ode":
             admin_teams = ["administration"]
             dev_teams = ["admins", "bah_team", "leidos_team"]
+        elif org == "usdot-fhwa-ops":
+            admin_teams = ["V2X Hub Admins"]
+            dev_teams = ["V2X Hub Team", "PCS Team"]
+        else:
+            logging.error(f"Organization '{org}' is not recognized. Skipping checks.")
+            return False
         if test_branch_push_restrictions(admin_teams, branch, dev_teams, repo.organization.login):
             if branch.name in ["main", "master"]:
                 message_pass = (

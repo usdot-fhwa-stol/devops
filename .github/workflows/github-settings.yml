@@ -35,7 +35,7 @@ jobs:
             --branches develop \
             --github-token "$DEVOPS_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol usdot-fhwa-ops
+            --organizations usdot-fhwa-stol usdot-fhwa-ops usdot-jpo-ode
 
       - name: Scan master branches
         env:
@@ -45,7 +45,7 @@ jobs:
             --branches master \
             --github-token "$DEVOPS_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol usdot-fhwa-ops
+            --organizations usdot-fhwa-stol usdot-fhwa-ops usdot-jpo-ode
 
       - name: Scan main branches
         env:
@@ -55,4 +55,4 @@ jobs:
             --branches main \
             --github-token "$DEVOPS_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol usdot-fhwa-ops
+            --organizations usdot-fhwa-stol usdot-fhwa-ops usdot-jpo-ode
