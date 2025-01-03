@@ -24,11 +24,15 @@ def get_github_json(url, token):
             url,
             headers=headers,
         )
-    except:
-        logging.error(red + "request failed: " + url)
-        exit()
+    except Exception as e:
+        logging.error(red + "Request failed: " + url + " | Error: " + str(e))
+        exit(1)
 
-    request_json = json.loads(request.text)
+    try:
+        request_json = json.loads(request.text)
+    except json.JSONDecodeError:
+        logging.error(red + f"Non-JSON response from {url}")
+        exit(1)
 
     return request_json
 
@@ -36,8 +40,12 @@ def get_github_json(url, token):
 def get_repo_list(github_org, github):
     repo_list = []
 
-    for repo in github.get_organization(github_org).get_repos():
-        repo_list = repo_list + [repo.name]
+    try:
+        for repo in github.get_organization(github_org).get_repos():
+            repo_list = repo_list + [repo.name]
+    except Exception as e:
+        logging.error(red + f"Error fetching repositories for organization {github_org}: {str(e)}")
+        exit(1)
 
     repo_list = sorted(repo_list)
 
@@ -51,14 +59,14 @@ def is_branch(branch, repo):
         for ref in repo.get_git_refs():
             if "refs/heads/" + branch == ref.ref:
                 branch_exists = True
-    except:
-        return branch_exists
-
+                break 
+    except Exception as e:
+        logging.error(red + f"Error checking branch existence for {branch} in {repo.name}: {str(e)}")
     return branch_exists
 
 
-def tests(github_branch, repo, token):
-    repo = github.get_repo(repo)
+def tests(github_branch, repo_full_name, token):
+    repo = github.get_repo(repo_full_name)
     msg = repo.name + ": " + github_branch + ": "
 
     branch_errors = []
@@ -68,19 +76,23 @@ def tests(github_branch, repo, token):
 
     # Test branch existence
     if is_branch(github_branch, repo):
-        branch = repo.get_branch(github_branch)
+        try:
+            branch = repo.get_branch(github_branch)
+        except Exception as e:
+            logging.error(red + f"{repo.name}: Error fetching branch {github_branch}: {str(e)}")
+            return {}  
         repo_dict[repo.name][branch.name] = {}
-        repo_dict[repo.name][branch.name]["branch-errors"] = {}
+        repo_dict[repo.name][branch.name]["branch-errors"] = branch_errors
 
         if test_repo_default_branch(repo):
             logging.info(green + repo.name + ': "Default branch" is "develop"')
         else:
             message_fail = '"Default branch" is not "develop"!'
-            branch_errors = [message_fail]
+            branch_errors.append(message_fail)
             logging.error(red + repo.name + ": " + message_fail)
     else:
         logging.warning(yellow + msg + "branch does not exist, skipping it")
-        return
+        return {} 
 
     # Test .github/workflows existence
     if branch.name == "develop" and test_branch_contains(
@@ -145,29 +157,36 @@ def tests(github_branch, repo, token):
             logging.error(red + msg + message_fail)
 
         # "Required number of approvals before merging"
-        if (
-            branch.get_required_pull_request_reviews().required_approving_review_count
-            >= 1
-        ):
-            logging.info(
-                green + msg + '"Required number of approvals before merging" >= 1'
-            )
-        else:
-            message_fail = '"Required number of approvals before merging" < 1!'
-            branch_errors = branch_errors + [message_fail]
-            logging.error(red + msg + message_fail)
+        try:
+            required_approvals = branch.get_required_pull_request_reviews().required_approving_review_count
+            if required_approvals >= 1:
+                logging.info(
+                    green + msg + '"Required number of approvals before merging" >= 1'
+                )
+            else:
+                message_fail = '"Required number of approvals before merging" < 1!'
+                branch_errors = branch_errors + [message_fail]
+                logging.error(red + msg + message_fail)
+        except Exception as e:
+            logging.error(red + f"{msg} Error fetching required approvals: {str(e)}")
+            branch_errors = branch_errors + ["Error fetching required approvals"]
 
         # "Dismiss stale pull request approvals when new commits are pushed"
-        if branch.get_required_pull_request_reviews().dismiss_stale_reviews:
-            logging.info(
-                green
-                + msg
-                + '"Dismiss stale pull request approvals when new commits are pushed" enabled'
-            )
-        else:
-            message_fail = '"Dismiss stale pull request approvals when new commits are pushed" disabled'
-            branch_errors = branch_errors + [message_fail]
-            logging.error(red + msg + message_fail)
+        try:
+            dismiss_stale = branch.get_required_pull_request_reviews().dismiss_stale_reviews
+            if dismiss_stale:
+                logging.info(
+                    green
+                    + msg
+                    + '"Dismiss stale pull request approvals when new commits are pushed" enabled'
+                )
+            else:
+                message_fail = '"Dismiss stale pull request approvals when new commits are pushed" disabled'
+                branch_errors = branch_errors + [message_fail]
+                logging.error(red + msg + message_fail)
+        except Exception as e:
+            logging.error(red + f"{msg} Error fetching dismiss stale reviews setting: {str(e)}")
+            branch_errors = branch_errors + ["Error fetching dismiss stale reviews setting"]
 
         # "Require status checks before merging"
         if test_branch_require_status_checks(branch, token):
@@ -184,6 +203,7 @@ def tests(github_branch, repo, token):
                 message_fail = (
                     '"Require status checks before merging" excluded "' + ci_name + '"!'
                 )
+                branch_errors = branch_errors + [message_fail]
                 logging.warning(yellow + msg + message_fail)
         else:
             message_fail = '"Require status checks before merging" disabled!'
@@ -201,18 +221,22 @@ def tests(github_branch, repo, token):
             logging.error(red + msg + message_fail)
 
         # "Restrict who can push to matching branches"
-        if org == "usdot-fhwa-stol":
+        if repo.organization.login == "usdot-fhwa-stol":
             admin_teams = ["Administration"]
             dev_teams = ["Administration", "Leidos Developers"]
-        elif org == "usdot-jpo-ode":
+        elif repo.organization.login == "usdot-jpo-ode":
             admin_teams = ["administration"]
             dev_teams = ["admins", "bah_team", "leidos_team"]
-        elif org == "usdot-fhwa-ops":
+        elif repo.organization.login == "usdot-fhwa-ops":
             admin_teams = ["V2X Hub Admins"]
             dev_teams = ["V2X Hub Team", "PCS Team"]
         else:
-            logging.error(f"Organization '{org}' is not recognized. Skipping checks.")
-            return False
+            message_fail = f"Organization '{repo.organization.login}' is not recognized. Skipping checks."
+            logging.error(red + message_fail)
+            branch_errors = branch_errors + [message_fail]
+            repo_dict[repo.name][branch.name]["branch-errors"] = branch_errors
+            return repo_dict 
+
         if test_branch_push_restrictions(admin_teams, branch, dev_teams, repo.organization.login):
             if branch.name in ["main", "master"]:
                 message_pass = (
@@ -241,58 +265,58 @@ def tests(github_branch, repo, token):
 
     repo_dict[repo.name][branch.name]["branch-errors"] = branch_errors
 
-    # print(str(repo_dict))
-
     return repo_dict
 
 
 # "Do not allow bypassing the above settings"
 def test_branch_admin_enforcement(branch, msg):
-    if branch.get_admin_enforcement():
-        return True
-
-    else:
-        return False
+    try:
+        if branch.get_admin_enforcement():
+            return True
+    except Exception as e:
+        logging.error(red + f"{msg} Error checking admin enforcement: {str(e)}")
+    return False
 
 
 # "Require status checks before merging"
 def test_branch_require_status_checks(branch, token):
     try:
-        get_github_json(branch.get_required_status_checks().url, token)
-        return True
-    except:
+        protection = branch.get_protection()
+        return protection.required_status_checks is not None
+    except Exception as e:
+        logging.error(red + f"Error checking status checks for branch {branch.name}: {str(e)}")
         return False
 
 
 # "Status checks that are required"
 def test_branch_status_checks_ci(branch, token, ci_name):
-    status_checks_json = get_github_json(branch.get_required_status_checks().url, token)
-
-    ci_list = status_checks_json["contexts"]
-    if ci_name in ci_list:
-        return True
-    else:
+    try:
+        protection = branch.get_protection()
+        status_checks = protection.required_status_checks.contexts
+        return ci_name in status_checks
+    except Exception as e:
+        logging.error(red + f"Error checking CI status checks for branch {branch.name}: {str(e)}")
         return False
 
 
 # "Allow deletions"
 def test_branch_allow_deletions(branch, token):
-    protection_json = get_github_json(branch.get_protection().url, token)
-
-    if protection_json["allow_deletions"]["enabled"]:
+    try:
+        protection = branch.get_protection()
+        return not protection.allow_deletions
+    except Exception as e:
+        logging.error(red + f"Error checking allow deletions for branch {branch.name}: {str(e)}")
         return False
-    else:
-        return True
 
 
 # "Allow force pushes"
 def test_branch_allow_force_pushes(branch, token):
-    protection_json = get_github_json(branch.get_protection().url, token)
-
-    if protection_json["allow_force_pushes"]["enabled"]:
+    try:
+        protection = branch.get_protection()
+        return not protection.allow_force_pushes
+    except Exception as e:
+        logging.error(red + f"Error checking allow force pushes for branch {branch.name}: {str(e)}")
         return False
-    else:
-        return True
 
 
 # "Restrict who can push to matching branches"
@@ -314,21 +338,22 @@ def test_branch_push_restrictions(admin_teams, branch, dev_teams, org):
                     return False
 
             return True
-    except:
-        return False
+    except Exception as e:
+        logging.error(red + f"Error checking push restrictions for branch {branch.name}: {str(e)}")
+    return False
 
 
 # "Allow specified actors to bypass required pull requests"
 def test_branch_require_pull_requests(branch, token):
-    bypass_users = ["kjrush"]
-
-    protection_json = get_github_json(branch.get_protection().url, token)
+    bypass_users = ["kjrush", "maefromm", "JonSmet"]
 
     try:
+        protection_json = get_github_json(branch.get_protection().url, token)
         github_bypass_json = protection_json["required_pull_request_reviews"][
             "bypass_pull_request_allowances"
         ]["users"]
-    except:
+    except Exception as e:
+        logging.error(red + f"Error accessing bypass users: {str(e)}")
         return False
 
     # Get users from github
@@ -342,7 +367,6 @@ def test_branch_require_pull_requests(branch, token):
 
     return True
 
-
 def test_branch_dismiss_stale_reviews(branch):
     branch.get_required_pull_request_reviews().dismiss_stale_reviews
 
@@ -355,7 +379,7 @@ def get_repo(github_repo, github):
     except Exception as e:
         logging.error(e)
         logging.error(msg_failure)
-        exit()
+        exit(1)
 
     return repo
 
@@ -391,9 +415,17 @@ def is_blacklisted_repo(github_repo):
 
 
 def open_github_issue(errors_dict, github_token, org):
-    issue_repo = os.environ["GITHUB_REPOSITORY"]
+    issue_repo = os.environ.get("GITHUB_REPOSITORY")
+    if not issue_repo:
+        logging.error("Environment variable GITHUB_REPOSITORY is not set.")
+        return  
+
     github = Github(github_token)
-    repo = github.get_repo(issue_repo)
+    try:
+        repo = github.get_repo(issue_repo)
+    except Exception as e:
+        logging.error(red + f"Error accessing issue repository {issue_repo}: {str(e)}")
+        return 
 
     def github_issue_exists(title):
         open_issues = repo.get_issues(state="open")
@@ -414,7 +446,7 @@ def open_github_issue(errors_dict, github_token, org):
                         "https://github.com/" + org + "/" + github_repo + "/settings"
                     )
                     issue_body = "### Component\n\nInfrastructure\n\n### Specifics\n\n- [ ] CircleCI\n- [ ] Docker or Docker Hub\n- [ ] Doxygen\n- [ ] GitHub Actions\n- [X] GitHub branch or repo\n- [ ] Sonar\n\n### What happened?\n\n"
-                    issue_body = issue_body + (
+                    issue_body += (
                         "The following ["
                         + org
                         + "/"
@@ -441,9 +473,84 @@ def open_github_issue(errors_dict, github_token, org):
                         # Try to avoid API rate limit
                         time.sleep(15)
                     except Exception as e:
-                        logging.error("Failed to create GitHub issue\n" + e)
+                        logging.error("Failed to create GitHub issue\n" + str(e))
                         exit(1)
 
+def check_branch_protection_graphql(owner, repo, token):
+    """
+    Uses GitHub's GraphQL API to check for branch protection rules matching 'hotfix/*' and 'release/*'.
+    Returns a list of existing patterns.
+    """
+    url = "https://api.github.com/graphql"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+    query = """
+    query($owner: String!, $repo: String!) {
+      repository(owner: $owner, name: $repo) {
+        branchProtectionRules(first: 100) {
+          nodes {
+            pattern
+          }
+        }
+      }
+    }
+    """
+    variables = {
+        "owner": owner,
+        "repo": repo
+    }
+    try:
+        response = requests.post(url, json={'query': query, 'variables': variables}, headers=headers)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        logging.error(f"GraphQL query failed for {owner}/{repo}: {str(e)}")
+        return None
+
+    try:
+        result = response.json()
+    except json.JSONDecodeError as e:
+        logging.error(f"Invalid JSON response for {owner}/{repo}: {str(e)}")
+        return None
+
+    if ('data' not in result or
+        'repository' not in result['data'] or
+        result['data']['repository'] is None or
+        'branchProtectionRules' not in result['data']['repository'] or
+        result['data']['repository']['branchProtectionRules'] is None):
+        logging.error(f"Failed to fetch branch protection rules for {owner}/{repo}. No data returned.")
+        return None
+
+    patterns = [rule['pattern'] for rule in result['data']['repository']['branchProtectionRules']['nodes']]
+    return patterns
+
+
+def check_hotfix_release_rules(repo_full_name, token):
+    """
+    Checks if 'hotfix/*' and 'release/*' branch protection rules exist using GraphQL.
+    Returns a dict with branch-errors if rules are missing.
+    """
+    parts = repo_full_name.split('/', 1)
+    if len(parts) != 2:
+        logging.error(f"Invalid repository name format: {repo_full_name}")
+        return {"branch-errors": [f"Invalid repository name format: {repo_full_name}"]}
+
+    owner, repo = parts
+    patterns = check_branch_protection_graphql(owner, repo, token)
+    
+    if patterns is None:
+        return {}
+    
+    errors_dict = {"branch-errors": []}
+    
+    if "hotfix/*" not in patterns:
+        errors_dict["branch-errors"].append('No branch protection rule for "hotfix/*"')
+    
+    if "release/*" not in patterns:
+        errors_dict["branch-errors"].append('No branch protection rule for "release/*"')
+    
+    return errors_dict if errors_dict["branch-errors"] else {}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -464,24 +571,48 @@ if __name__ == "__main__":
     try:
         github = Github(args.github_token)
     except Exception as e:
-        logging.error(e)
-        exit()
+        logging.error(red + "Error initializing GitHub client: " + str(e))
+        exit(1)
 
     try:
         for org in args.organizations:
             for github_repo in get_repo_list(org, github):
-                if not is_blacklisted_repo(org + "/" + github_repo):
-                    repo = get_repo(org + "/" + github_repo, github)
+                full_repo_name = f"{org}/{github_repo}"
+                if not is_blacklisted_repo(full_repo_name):
+                    try:
+                        repo = get_repo(full_repo_name, github)
+                    except Exception as e:
+                        logging.error(red + f"{full_repo_name}: Error fetching repository: {str(e)}")
+                        continue
+
+                    # Skip archived repos
                     if repo.archived:
                         logging.warning(
                             yellow + github_repo + ": archived repository, skipping it"
                         )
-                    else:
-                        for branch in args.branches:
-                            errors_dict = tests(
-                                branch, org + "/" + github_repo, args.github_token
-                            )
-                            if args.open_github_issues and errors_dict:
-                                open_github_issue(errors_dict, args.github_token, org)
+                        continue
+
+                    # For each named branch (e.g. develop, main, master), perform existing checks
+                    for branch in args.branches:
+                        errors_dict = tests(
+                            branch, full_repo_name, args.github_token
+                        )
+                        if not isinstance(errors_dict, dict):
+                            errors_dict = {} 
+
+                        hotfix_release_errors = check_hotfix_release_rules(full_repo_name, args.github_token)
+                        if hotfix_release_errors:
+                            if full_repo_name not in errors_dict:
+                                errors_dict[full_repo_name] = {}
+                            
+                            errors_dict[full_repo_name]["hotfix_release_rules"] = {
+                                "branch-errors": hotfix_release_errors["branch-errors"]
+                            }
+                        if args.open_github_issues and errors_dict:
+                            open_github_issue(errors_dict, args.github_token, org)
     except KeyboardInterrupt:
-        exit()
+        logging.info("Script interrupted by user. Exiting.")
+        exit(0)
+    except Exception as e:
+        logging.error(red + f"Unexpected error: {str(e)}")
+        exit(1)

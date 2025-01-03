@@ -5,9 +5,8 @@ on:
     branches:
       - arc-74_fix_repo_settings_auditscript
   schedule:
-    # * is a special character in YAML so you have to quote this string
-    - cron: "0 8 * * 1-5"
-    - cron: "0 9 * * 1-5"
+    # Run on 1st and 15th of every month at 08:00
+    - cron: "0 8 1,15 * *"
 
 jobs:
   build:
