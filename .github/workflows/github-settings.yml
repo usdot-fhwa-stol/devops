@@ -3,7 +3,7 @@ name: Scheduled GitHub Repo Settings Scan
 on:
   push:
     branches:
-      - arc-74_fix_repo_settings_auditscript
+      - arc_74_fix_audit_script
   schedule:
     # Run on 1st and 15th of every month at 08:00
     - cron: "0 8 1,15 * *"
