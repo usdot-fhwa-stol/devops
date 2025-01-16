@@ -384,6 +384,11 @@ def is_blacklisted_repo(github_repo):
         "usdot-fhwa-stol/c1t_zed_driver",
         "usdot-fhwa-stol/c1t_razor_imu_m0_driver",
         "usdot-fhwa-stol/c1t_rplidar_driver",
+        "usdot-jpo-ode/jpo-security",
+        "usdot-jpo-ode/jpo-tim-builder"
+        "usdot-jpo-ode/scms-asn1",
+        "usdot-jpo-ode/Pikalert-Vehicle-Data-Translator-",
+        "usdot-fhwa-OPS/libwebsockets"
 
     ]
 
