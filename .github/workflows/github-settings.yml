@@ -4,6 +4,7 @@ on:
   schedule:
     # Run on 1st and 15th of every month at 08:00
     - cron: "0 8 1,15 * *"
+  workflow_dispatch:
 
 jobs:
   build:
