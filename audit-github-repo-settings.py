@@ -366,6 +366,25 @@ def is_blacklisted_repo(github_repo):
         "usdot-fhwa-stol/github_metrics",
         "usdot-fhwa-stol/voices-cda-use-case-scenario-database",
         "usdot-jpo-ode/usdot-jpo-ode.github.io",
+        "usdot-fhwa-stol/carma_ament_lint",
+        "usdot-fhwa-stol/CARMASensitive",
+        "usdot-fhwa-stol/opendrive2lanelet",
+        "usdot-fhwa-stol/actions",
+        "usdot-fhwa-stol/carma-builds",
+        "usdot-fhwa-stol/spectrum-testing",
+        "usdot-fhwa-stol/.github",
+        "usdot-fhwa-stol/To-21-426-multivariate-piecewise-linear-ACC-car-following-model",
+        "usdot-fhwa-stol/To-21-426-modeling-HV-interactions-with-inconspicuous-ACC-equipped-vehicles",
+        "usdot-fhwa-stol/tracetools_analysis",
+        "usdot-fhwa-stol/robot_localization",
+        "usdot-fhwa-stol/Stol-scratchpad",
+        "usdot-fhwa-stol/asn-code-gen",
+        "usdot-fhwa-stol/voices-protocol-io-library",
+        "usdot-fhwa-stol/dwm1001_ros2",
+        "usdot-fhwa-stol/c1t_zed_driver",
+        "usdot-fhwa-stol/c1t_razor_imu_m0_driver",
+        "usdot-fhwa-stol/c1t_rplidar_driver",
+
     ]
 
     if github_repo in blacklist:
