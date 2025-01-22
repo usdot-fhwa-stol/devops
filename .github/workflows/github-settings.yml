@@ -2,16 +2,16 @@ name: Scheduled GitHub Repo Settings Scan
 
 on:
   schedule:
-    # * is a special character in YAML so you have to quote this string
-    - cron: "0 8 * * 1-5"
-    - cron: "0 9 * * 1-5"
+    # Run on 1st and 15th of every month at 08:00
+    - cron: "0 8 1,15 * *"
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
@@ -25,7 +25,6 @@ jobs:
           python -m pip install -r audit-github-repo-settings_requirements.txt
 
       - name: Scan develop branches
-        if: github.event.schedule == '0 8 * * 1-5'
         env:
           DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
         run: |
@@ -33,10 +32,9 @@ jobs:
             --branches develop \
             --github-token "$DEVOPS_GITHUB_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol usdot-jpo-ode
+            --organizations usdot-fhwa-stol usdot-fhwa-ops usdot-jpo-ode
 
       - name: Scan master branches
-        if: github.event.schedule == '0 9 * * 1-5'
         env:
           DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
         run: |
@@ -44,10 +42,9 @@ jobs:
             --branches master \
             --github-token "$DEVOPS_GITHUB_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol usdot-jpo-ode
+            --organizations usdot-fhwa-stol usdot-fhwa-ops usdot-jpo-ode
 
       - name: Scan main branches
-        if: github.event.schedule == '0 9 * * 1-5'
         env:
           DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
         run: |
@@ -55,4 +52,4 @@ jobs:
             --branches main \
             --github-token "$DEVOPS_GITHUB_TOKEN" \
             --open-github-issues \
-            --organizations usdot-fhwa-stol usdot-jpo-ode
+            --organizations usdot-fhwa-stol usdot-fhwa-ops usdot-jpo-ode
