@@ -1,7 +1,9 @@
 name: Bulk Close Issues
 
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - remove_duplicate_issues
 
 jobs:
   close_issues:
