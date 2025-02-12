@@ -1,0 +1,25 @@
+name: Bulk Close Issues
+
+on:
+  workflow_dispatch:
+
+jobs:
+  close_issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+
+      - name: Auth with default GITHUB_TOKEN
+        run: |
+          echo ${{ secrets.GITHUB_TOKEN }} | gh auth login --with-token
+
+      - name: Close all open issues
+        run: |
+          gh issue list --state open --limit 1000 --json number --jq '.[].number' \
+            | xargs -I % gh issue close %
