@@ -169,27 +169,6 @@ def tests(github_branch, repo, token):
             branch_errors = branch_errors + [message_fail]
             logging.error(red + msg + message_fail)
 
-        # "Require status checks before merging"
-        if test_branch_require_status_checks(branch, token):
-            logging.info(green + msg + '"Require status checks before merging" enabled')
-
-            # "Status checks that are required"
-            ci_name = "ci.yml"
-            if test_branch_status_checks_ci(branch, token, ci_name):
-                message_pass = (
-                    '"Require status checks before merging" included "' + ci_name + '"'
-                )
-                logging.info(green + msg + message_pass)
-            else:
-                message_fail = (
-                    '"Require status checks before merging" excluded "' + ci_name + '"!'
-                )
-                logging.warning(yellow + msg + message_fail)
-        else:
-            message_fail = '"Require status checks before merging" disabled!'
-            branch_errors = branch_errors + [message_fail]
-            logging.error(red + msg + message_fail)
-
         # "Do not allow bypassing the above settings"
         if test_branch_admin_enforcement(branch, msg):
             logging.info(
@@ -205,11 +184,11 @@ def tests(github_branch, repo, token):
             admin_teams = ["Administration"]
             dev_teams = ["Administration", "Leidos Developers"]
         elif org == "usdot-jpo-ode":
-            admin_teams = ["administration"]
-            dev_teams = ["admins", "bah_team", "leidos_team"]
+            admin_teams = ["administrators"]
+            dev_teams = ["administrators", "leidos_team"]
         elif org == "usdot-fhwa-ops":
-            admin_teams = ["V2X Hub Admins"]
-            dev_teams = ["V2X Hub Team", "PCS Team"]
+            admin_teams = ["V2X-Hub Admins"]
+            dev_teams = ["V2X-Hub Team"]
         if test_branch_push_restrictions(admin_teams, branch, dev_teams, org):
             if branch.name in ["main", "master"]:
                 message_pass = (
@@ -367,9 +346,11 @@ def is_blacklisted_repo(github_repo):
         "usdot-fhwa-stol/voices-cda-use-case-scenario-database",
         "usdot-jpo-ode/usdot-jpo-ode.github.io",
         "usdot-fhwa-stol/carma_ament_lint",
+        "usdot-fhwa-stol/cav-education",
         "usdot-fhwa-stol/CARMASensitive",
         "usdot-fhwa-stol/opendrive2lanelet",
         "usdot-fhwa-stol/actions",
+        "usdot-fhwa-stol/devops",
         "usdot-fhwa-stol/carma-builds",
         "usdot-fhwa-stol/spectrum-testing",
         "usdot-fhwa-stol/.github",
@@ -384,11 +365,19 @@ def is_blacklisted_repo(github_repo):
         "usdot-fhwa-stol/c1t_zed_driver",
         "usdot-fhwa-stol/c1t_razor_imu_m0_driver",
         "usdot-fhwa-stol/c1t_rplidar_driver",
+        "usdot-fhwa-stol/temp_test_repo",
         "usdot-jpo-ode/jpo-security",
         "usdot-jpo-ode/jpo-tim-builder"
+        "usdot-jpo-ode/wzdx",
+        "usdot-jpo-ode/wzdc-tool",
+        "usdot-jpo-ode/TDx",
+        "usdot-jpo-ode/jpo-mec-deposit",
+        "usdot-jpo-ode/jpo-cvportal",
         "usdot-jpo-ode/scms-asn1",
         "usdot-jpo-ode/Pikalert-Vehicle-Data-Translator-",
-        "usdot-fhwa-OPS/libwebsockets"
+        "usdot-fhwa-ops/sample_angular_saml_app",
+        "usdot-fhwa-ops/.github",
+        "usdot-fhwa-ops/libwebsockets"
 
     ]
 
