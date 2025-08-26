@@ -129,7 +129,18 @@ def get_issues_from_pr(github_repo, pr_number):
         if not jira_keys:
             github_issue_match = re.findall(r'Related GitHub Issue.*?(\[[^\]]*\])?\(?#(\d+)\)?', issue_body, re.DOTALL)
             if github_issue_match:
-                github_issues = [f"#{match[1].strip()}" for match in github_issue_match if match[1].strip()]
+                formatted = []
+                for _, num in github_issue_match:
+                    num = num.strip()
+                    if not num:
+                        continue
+                    try:
+                        issue_obj = github_repo.get_issue(number=int(num))
+                        title = (issue_obj.title or '').strip()
+                        formatted.append(f"[#{num}]({issue_obj.html_url}): {title}")
+                    except GithubException:
+                        formatted.append(f"#{num}")
+                github_issues = formatted
         # If no github issue or jira issue is found, PR is orphan
         if not jira_keys and not github_issues:
             return None, None
@@ -352,7 +363,7 @@ def release_notes(parsed_args):
                                             )
 
                             elif pr_github_issues:
-                                github_issues.append(pr_github_issues)
+                                github_issues.extend(pr_github_issues)
 
                             else:
                                 pull_requests_missing_epics.append(f"{pr.title.strip()} (Pull Request [#{pr.number}]({pr.html_url}))")
