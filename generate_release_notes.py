@@ -328,17 +328,12 @@ def release_notes(parsed_args):
                 for found_commit in found_commits:
                     try:
                         pr_list = found_commit.get_pulls()
-                        merged_prs = [p for p in pr_list if p.state == "closed" and p.merged]
-                        if merged_prs:
-                            prr_list.update(merged_prs)
+                        if pr_list.totalCount > 0:
+                            prr_list.update(list(pr_list))
                         else:
-                            open_or_unmerged = [p for p in pr_list if not (p.state == "closed" and p.merged)]
                             commit_title = "{} (Commit [{}])".format(
                                 found_commit.commit.message.strip().split('\n', 1)[0], found_commit.commit.sha[:6]
                             )
-                            if open_or_unmerged:
-                                pr_nums = ", ".join(f"#{p.number}" for p in open_or_unmerged)
-                                commit_title += f" — Open PRs {pr_nums}"
                             commit_only.add(commit_title)
                     except GithubException as error:
                         logging.warning(
@@ -351,6 +346,8 @@ def release_notes(parsed_args):
                 if prr_list:
                     for pr in prr_list:
                         try:
+                            if pr.state != "closed" or not pr.merged:
+                                continue
                             jira_keys, pr_github_issues = get_issues_from_pr(repo, pr.number)
                             if jira_keys:
                                 for jira_key in jira_keys:
@@ -359,7 +356,6 @@ def release_notes(parsed_args):
                                         epic_key, epic_title, epic_description, epic_status = get_parent_epic(
                                             jira_issue, parsed_args.jira_url, parsed_args.jira_email, parsed_args.jira_token)
                                         if epic_title:
-                                            # Create a list of epic fields for each epic including key, title, status and description
                                             epic_set.add((epic_key,epic_title, epic_description, epic_status))
                                             pr_mapping.setdefault(epic_key, []).append(f"[{repo.name} PR #{pr.number}]({repo.html_url}/pull/{pr.number})")
                                         else:
@@ -380,6 +376,15 @@ def release_notes(parsed_args):
                     repo.name, parsed_args.version, epic_set,
                     issue_titles_other, github_issues, pull_requests_missing_epics, commit_only, pr_mapping
                 )
+                open_prs = []
+                for pr in repo.get_pulls(state="open"):
+                    try:
+                        if pr.base.ref == parsed_args.release_branch:
+                            open_prs.append(f"* [{repo.name} PR #{pr.number}]({pr.html_url}): {pr.title.strip()}")
+                    except GithubException:
+                        continue
+                if open_prs:
+                    notes += "\n**Open PRs targeting release branch (excluded)**\n" + "\n".join(open_prs) + "\n"
                 logging.info("Generated release note for repo: %s", github_repo)
 
         if skipped_repos:
