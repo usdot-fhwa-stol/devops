@@ -129,7 +129,7 @@ def get_issues_from_pr(github_repo, pr_number):
         if not jira_keys:
             github_issue_match = re.findall(r'Related GitHub Issue.*?(\[[^\]]*\])?\(?#(\d+)\)?', issue_body, re.DOTALL)
             if github_issue_match:
-                formatted = []
+                github_issues = []
                 for _, num in github_issue_match:
                     num = num.strip()
                     if not num:
@@ -137,10 +137,9 @@ def get_issues_from_pr(github_repo, pr_number):
                     try:
                         issue_obj = github_repo.get_issue(number=int(num))
                         title = (issue_obj.title or '').strip()
-                        formatted.append(f"[#{num}]({issue_obj.html_url}): {title}")
+                        github_issues.append(f"[#{num}]({issue_obj.html_url}): {title}")
                     except GithubException:
-                        formatted.append(f"#{num}")
-                github_issues = formatted
+                        github_issues.append(f"#{num}")
         # If no github issue or jira issue is found, PR is orphan
         if not jira_keys and not github_issues:
             return None, None
