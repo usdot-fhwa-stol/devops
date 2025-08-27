@@ -244,7 +244,7 @@ def get_release_notes(name, version, epic_set,
     notes_content += "\n**List of Orphaned Commits**\n"
     if commit_only:
         for commit in commit_only:
-            commit_title = commit.split(': ', 1)[0]
+            commit_title = commit
             notes_content += f"* Commit: {commit_title}\n"
     else:
         notes_content += "No Orphaned Commits found\n"
@@ -328,12 +328,17 @@ def release_notes(parsed_args):
                 for found_commit in found_commits:
                     try:
                         pr_list = found_commit.get_pulls()
-                        if pr_list.totalCount > 0:
-                            prr_list.update(list(pr_list))
+                        merged_prs = [p for p in pr_list if p.state == "closed" and p.merged]
+                        if merged_prs:
+                            prr_list.update(merged_prs)
                         else:
+                            open_or_unmerged = [p for p in pr_list if not (p.state == "closed" and p.merged)]
                             commit_title = "{} (Commit [{}])".format(
                                 found_commit.commit.message.strip().split('\n', 1)[0], found_commit.commit.sha[:6]
                             )
+                            if open_or_unmerged:
+                                pr_nums = ", ".join(f"#{p.number}" for p in open_or_unmerged)
+                                commit_title += f" — Open PRs {pr_nums}"
                             commit_only.add(commit_title)
                     except GithubException as error:
                         logging.warning(
@@ -346,8 +351,6 @@ def release_notes(parsed_args):
                 if prr_list:
                     for pr in prr_list:
                         try:
-                            if pr.state != "closed" or not pr.merged:
-                                continue
                             jira_keys, pr_github_issues = get_issues_from_pr(repo, pr.number)
                             if jira_keys:
                                 for jira_key in jira_keys:
