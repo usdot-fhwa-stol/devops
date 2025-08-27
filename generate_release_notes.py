@@ -346,6 +346,8 @@ def release_notes(parsed_args):
                 if prr_list:
                     for pr in prr_list:
                         try:
+                            if pr.state != "closed" or not pr.merged:
+                                continue
                             jira_keys, pr_github_issues = get_issues_from_pr(repo, pr.number)
                             if jira_keys:
                                 for jira_key in jira_keys:
