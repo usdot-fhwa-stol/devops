@@ -371,7 +371,7 @@ def release_notes(parsed_args):
                                 github_issues.extend(pr_github_issues)
 
                             else:
-                                pull_requests_missing_epics.append(f"{pr.title.strip()} (Pull Request [#{pr.number}]({pr.html_url}))")
+                                pull_requests_missing_epics.append(f"{pr.title.strip()} ([{repo.name} PR #{pr.number}]({pr.html_url}))")
                         except GithubException as error:
                             logging.error("Error processing PR #%d for repo %s: %s", pr.number, repo.name, error)
                             skipped_prs.append(f"PR #{pr.number} in repo {repo.name} failed to process")
