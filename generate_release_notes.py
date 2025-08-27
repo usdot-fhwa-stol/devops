@@ -129,7 +129,17 @@ def get_issues_from_pr(github_repo, pr_number):
         if not jira_keys:
             github_issue_match = re.findall(r'Related GitHub Issue.*?(\[[^\]]*\])?\(?#(\d+)\)?', issue_body, re.DOTALL)
             if github_issue_match:
-                github_issues = [f"#{match[1].strip()}" for match in github_issue_match if match[1].strip()]
+                github_issues = []
+                for _, num in github_issue_match:
+                    num = num.strip()
+                    if not num:
+                        continue
+                    try:
+                        issue_obj = github_repo.get_issue(number=int(num))
+                        title = (issue_obj.title or '').strip()
+                        github_issues.append(f"[#{num}]({issue_obj.html_url}): {title}")
+                    except GithubException:
+                        github_issues.append(f"#{num}")
         # If no github issue or jira issue is found, PR is orphan
         if not jira_keys and not github_issues:
             return None, None
@@ -198,7 +208,7 @@ def get_release_notes(name, version, epic_set,
             epic_description = epic_fields[2] if len(epic_fields) >2 and epic_fields[2] else "No description provided"
             epic_status = epic_fields[3] if len(epic_fields) > 3 and epic_fields[3] else "No status provided" 
             pr_numbers = pr_mapping.get(epic_key, [])
-            pr_list = ', '.join([f"#{pr}" for pr in pr_numbers]) if pr_numbers else "N/A"
+            pr_list = ', '.join(pr_numbers) if pr_numbers else "N/A"
             notes_content += f"* {epic_key}: {epic_title} (Status: {epic_status}): "
             notes_content += f"{epic_description}. (GitHub PRs {pr_list})\n"
 
@@ -233,7 +243,7 @@ def get_release_notes(name, version, epic_set,
     notes_content += "\n**List of Orphaned Commits**\n"
     if commit_only:
         for commit in commit_only:
-            commit_title = commit.split(': ', 1)[0]
+            commit_title = commit
             notes_content += f"* Commit: {commit_title}\n"
     else:
         notes_content += "No Orphaned Commits found\n"
@@ -335,6 +345,9 @@ def release_notes(parsed_args):
                 if prr_list:
                     for pr in prr_list:
                         try:
+                            # Only process PRs that are closed and merged
+                            if pr.state != "closed" or not pr.merged:
+                                continue
                             jira_keys, pr_github_issues = get_issues_from_pr(repo, pr.number)
                             if jira_keys:
                                 for jira_key in jira_keys:
@@ -343,19 +356,18 @@ def release_notes(parsed_args):
                                         epic_key, epic_title, epic_description, epic_status = get_parent_epic(
                                             jira_issue, parsed_args.jira_url, parsed_args.jira_email, parsed_args.jira_token)
                                         if epic_title:
-                                            # Create a list of epic fields for each epic including key, title, status and description
                                             epic_set.add((epic_key,epic_title, epic_description, epic_status))
-                                            pr_mapping.setdefault(epic_key, []).append(pr.number)
+                                            pr_mapping.setdefault(epic_key, []).append(f"[{repo.name} PR #{pr.number}]({repo.html_url}/pull/{pr.number})")
                                         else:
                                             issue_titles_other.append(
                                                 f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']}) - Epic missing"
                                             )
 
                             elif pr_github_issues:
-                                github_issues.append(pr_github_issues)
+                                github_issues.extend(pr_github_issues)
 
                             else:
-                                pull_requests_missing_epics.append(f"{pr.title.strip()} (Pull Request [#{pr.number}]({pr.html_url}))")
+                                pull_requests_missing_epics.append(f"{pr.title.strip()} ([{repo.name} PR #{pr.number}]({pr.html_url}))")
                         except GithubException as error:
                             logging.error("Error processing PR #%d for repo %s: %s", pr.number, repo.name, error)
                             skipped_prs.append(f"PR #{pr.number} in repo {repo.name} failed to process")
@@ -364,6 +376,15 @@ def release_notes(parsed_args):
                     repo.name, parsed_args.version, epic_set,
                     issue_titles_other, github_issues, pull_requests_missing_epics, commit_only, pr_mapping
                 )
+                open_prs = []
+                for pr in repo.get_pulls(state="open"):
+                    try:
+                        if pr.base.ref == parsed_args.release_branch:
+                            open_prs.append(f"* [{repo.name} PR #{pr.number}]({pr.html_url}): {pr.title.strip()}")
+                    except GithubException:
+                        continue
+                if open_prs:
+                    notes += "\n**Open PRs targeting release branch (excluded)**\n" + "\n".join(open_prs) + "\n"
                 logging.info("Generated release note for repo: %s", github_repo)
 
         if skipped_repos:
