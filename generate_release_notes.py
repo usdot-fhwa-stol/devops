@@ -209,7 +209,7 @@ def get_release_notes(name, version, epic_set,
             epic_description = epic_fields[2] if len(epic_fields) >2 and epic_fields[2] else "No description provided"
             epic_status = epic_fields[3] if len(epic_fields) > 3 and epic_fields[3] else "No status provided" 
             pr_numbers = pr_mapping.get(epic_key, [])
-            pr_list = ', '.join([f"#{pr}" for pr in pr_numbers]) if pr_numbers else "N/A"
+            pr_list = ', '.join(pr_numbers) if pr_numbers else "N/A"
             notes_content += f"* {epic_key}: {epic_title} (Status: {epic_status}): "
             notes_content += f"{epic_description}. (GitHub PRs {pr_list})\n"
 
@@ -361,7 +361,7 @@ def release_notes(parsed_args):
                                         if epic_title:
                                             # Create a list of epic fields for each epic including key, title, status and description
                                             epic_set.add((epic_key,epic_title, epic_description, epic_status))
-                                            pr_mapping.setdefault(epic_key, []).append(pr.number)
+                                            pr_mapping.setdefault(epic_key, []).append(f"[{repo.name} PR #{pr.number}]({repo.html_url}/pull/{pr.number})")
                                         else:
                                             issue_titles_other.append(
                                                 f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']}) - Epic missing"
