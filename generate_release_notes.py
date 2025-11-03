@@ -39,9 +39,8 @@ def is_trivial_pr(title):
     """
     trivial_phrases = [
         "merge release", "merge master", "merge develop",
-        "sync master", "sync develop",
-        "update configs", "update .env",
-        "bump actions/checkout", "bump version", "update version"
+        "sync master", "sync develop", "update .env",
+        "bump actions/checkout", "bump version", "dependabot"
     ]
     t = title.lower()
     return any(p in t for p in trivial_phrases)
@@ -400,8 +399,17 @@ def release_notes(parsed_args):
                                             epic_set.add((epic_key,epic_title, epic_description, epic_status))
                                             pr_mapping.setdefault(epic_key, []).append(f"[{repo.name} PR #{pr.number}]({repo.html_url}/pull/{pr.number})")
                                         else:
-                                            issue_titles_other.append(
-                                                f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']})\n  - Description: {jira_issue['fields'].get('description', 'No description provided')} - Epic missing"
+                                            desc = jira_issue['fields'].get('description', 'No description provided')
+                                            if isinstance(desc, dict) and 'content' in desc:
+                                                cleaned = []
+                                                for block in desc.get('content', []):
+                                                    if block['type'] == 'paragraph':
+                                                        paragraph_text = " ".join(
+                                                            [item.get('text', '') for item in block.get('content', []) if item.get('type') == 'text']
+                                                        )
+                                                        cleaned.append(paragraph_text)
+                                                desc = "\n".join(cleaned) if cleaned else 'No description available'
+                                            issue_titles_other.append(f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']})\n  - Description: {desc} - Epic missing"
                                             )
 
                             elif pr_github_issues:
