@@ -19,7 +19,7 @@ skipped_prs = []
 
 # Grouping definitions for release notes
 KEY_EXISTING_REPOS = {"carma-platform", "carma-messenger", "carma-cloud"}
-PRIVATE_REPOS = {"carma-vehicle-calibration", "stol72735"}
+PRIVATE_REPOS = {"carma-vehicle-calibration", "stol-j2735"}
 
 def get_repo_group(repo_name):
     """
@@ -32,6 +32,19 @@ def get_repo_group(repo_name):
         return "Private Repositories"
     else:
         return "Other Existing Repositories"
+
+def is_trivial_pr(title):
+    """
+    Return True if the PR title is with internal PRs(Like release process,GitHub Bot,etc) and should be skipped from release notes.
+    """
+    trivial_phrases = [
+        "merge release", "merge master", "merge develop",
+        "sync master", "sync develop",
+        "update configs", "update .env",
+        "bump actions/checkout", "bump version", "update version"
+    ]
+    t = title.lower()
+    return any(p in t for p in trivial_phrases)
 
 def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
     """
@@ -226,7 +239,7 @@ def get_release_notes(name, version, epic_set,
             pr_numbers = pr_mapping.get(epic_key, [])
             pr_list = ', '.join(pr_numbers) if pr_numbers else "N/A"
             notes_content += f"* {epic_key}: {epic_title} (Status: {epic_status}): "
-            notes_content += f"{epic_description}. (GitHub PRs {pr_list})\n"
+            notes_content += f"{epic_description}.\n  - Pull Requests: {pr_list}\n"
 
     else:
         notes_content += "No Jira epics found\n"
@@ -369,6 +382,13 @@ def release_notes(parsed_args):
                             # Only process PRs that are closed and merged
                             if pr.state != "closed" or not pr.merged:
                                 continue
+                            if pr.draft:
+                                logging.info(f"Skipping draft PR: {pr.title}")
+                                continue
+                            # Skip trivial PRs that add no release-note value
+                            if is_trivial_pr(pr.title):
+                                logging.info(f"Skipping trivial PR:{pr.title}")
+                                continue    
                             jira_keys, pr_github_issues = get_issues_from_pr(repo, pr.number)
                             if jira_keys:
                                 for jira_key in jira_keys:
@@ -381,7 +401,7 @@ def release_notes(parsed_args):
                                             pr_mapping.setdefault(epic_key, []).append(f"[{repo.name} PR #{pr.number}]({repo.html_url}/pull/{pr.number})")
                                         else:
                                             issue_titles_other.append(
-                                                f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']}) - Epic missing"
+                                                f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']})\n  - Description: {jira_issue['fields'].get('description', 'No description provided')} - Epic missing"
                                             )
 
                             elif pr_github_issues:
