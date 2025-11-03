@@ -17,6 +17,22 @@ from github import Github, GithubException
 skipped_repos = []
 skipped_prs = []
 
+# Grouping definitions for release notes
+KEY_EXISTING_REPOS = {"carma-platform", "carma-messenger", "carma-cloud"}
+PRIVATE_REPOS = {"carma-vehicle-calibration", "stol72735"}
+
+def get_repo_group(repo_name):
+    """
+    Determine which section the repository belongs to.
+    """
+    lower = repo_name.lower()
+    if lower in KEY_EXISTING_REPOS:
+        return "Changes to Key Existing Repositories"
+    elif lower in PRIVATE_REPOS:
+        return "Private Repositories"
+    else:
+        return "Other Existing Repositories"
+
 def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
     """
     Function to get Jira issue details based on the Jira key.
@@ -197,7 +213,7 @@ def get_release_notes(name, version, epic_set,
     Returns:
         str: Formatted release notes in markdown.
     """
-    notes_content = f"\n\n## {name} - {version}\n"
+    notes_content = f"\n\n## {name}\n"
 
     # List of Jira Epics
     notes_content += "\n**List of Jira Epics**\n"
@@ -297,8 +313,13 @@ def release_notes(parsed_args):
         logging.error("%s", error)
         sys.exit(1)
 
+    sections = {
+        "Changes to Key Existing Repositories": [],
+        "Other Existing Repositories": [],
+        "Private Repositories": [],
+    }
+
     try:
-        notes = "# Releases"
         for org in parsed_args.organizations:
             for github_repo in get_repo_list(org, github):
                 logging.info("Processing %s", github_repo)
@@ -372,10 +393,13 @@ def release_notes(parsed_args):
                             logging.error("Error processing PR #%d for repo %s: %s", pr.number, repo.name, error)
                             skipped_prs.append(f"PR #{pr.number} in repo {repo.name} failed to process")
 
-                notes += get_release_notes(
+                repo_group = get_repo_group(repo.name)
+                repo_notes = get_release_notes(
                     repo.name, parsed_args.version, epic_set,
                     issue_titles_other, github_issues, pull_requests_missing_epics, commit_only, pr_mapping
                 )
+                sections[repo_group].append(repo_notes)
+
                 open_prs = []
                 for pr in repo.get_pulls(state="open"):
                     try:
@@ -384,8 +408,17 @@ def release_notes(parsed_args):
                     except GithubException:
                         continue
                 if open_prs:
-                    notes += "\n**Open PRs targeting release branch (excluded)**\n" + "\n".join(open_prs) + "\n"
+                    sections[repo_group].append("\n**Open PRs targeting release branch (excluded)**\n" + "\n".join(open_prs) + "\n")
                 logging.info("Generated release note for repo: %s", github_repo)
+
+        notes = "# CARMA System Release Notes\n"
+        notes += f"\nVersion {parsed_args.version}, released TBD\n"
+        notes += "\n---\n"
+        for section_title in ["Changes to Key Existing Repositories", "Other Existing Repositories", "Private Repositories"]:
+            if not sections[section_title]:
+                continue
+            notes += f"\n## {section_title}\n"
+            notes += "\n".join(sections[section_title])
 
         if skipped_repos:
             notes += "\n\n**Skipped Repositories**\n"
