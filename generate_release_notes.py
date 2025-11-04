@@ -33,6 +33,31 @@ def get_repo_group(repo_name):
     else:
         return "Other Existing Repositories"
 
+def format_repo_name(repo_name):
+    """
+    Convert raw repo names to formatted display names for release notes compared with previous release.
+    """
+    name_map = {
+        "carma-platform": "CARMA Platform", "carma-cloud": "CARMA Cloud", "carma-streets": "CARMA Streets",
+        "carma-messenger": "CARMA Messenger", "carma-messenger-bridge": "CARMA Messenger Bridge",
+        "carma-config": "CARMA Config", "carma-base": "CARMA Base", "carma-utils": "CARMA Utils",
+        "carma-msgs": "CARMA Msgs", "carma-lightbar-driver": "CARMA Lightbar Driver",
+        "carma-velodyne-lidar-driver": "CARMA Velodyne Lidar Driver",
+        "carma-novatel-oem-driver-wrapper": "CARMA Novatel OEM7 Driver Wrapper",
+        "carma-ssc-interface-wrapper": "CARMA SSC Interface Wrapper",
+        "carma-torc-pinpoint-driver": "CARMA Torc Pinpoint Driver", "carma-vehicle-calibration": "CARMA Vehicle Calibration",
+        "carma-analytics-fotda": "CARMA Analytics FOTDA", "carma-ns3-adapter": "CARMA NS3 Adapter",
+        "cdasim": "CDASim", "cda-telematics": "CDA Telematics",
+        "v2x-ros-driver": "V2X ROS Driver", "v2x-ros-conversion": "V2X ROS Conversion",
+        "stol-j2735": "STOL J2735", "autoware.auto": "Autoware.Auto", "autoware.ai": "Autoware.ai",
+        "ros1_bridge": "Ros1_bridge", "navigation2_extensions": "Navigation2 Extensions",
+        "navigation2": "Navigation2", "twist_to_ackermann": "Twist To Ackermann", "vesc": "VESC",
+        "c1t_bringup": "C1T Bringup", "c1t2x-emulator": "C1T2X Emulator",
+        "v2x-hub": "V2X Hub", "carma-web-ui": "CARMA Web UI"
+    }
+    lower = repo_name.lower()
+    return name_map.get(lower, " ".join(word.capitalize() for word in lower.replace("_", "-").split("-")))
+
 def is_trivial_pr(title):
     """
     Return True if the PR title is with internal PRs(Like release process,GitHub Bot,etc) and should be skipped from release notes.
@@ -225,7 +250,7 @@ def get_release_notes(name, version, epic_set,
     Returns:
         str: Formatted release notes in markdown.
     """
-    notes_content = f"\n\n## {name}\n"
+    notes_content = f"\n\n## {format_repo_name(name)}\n"
 
     # List of Jira Epics
     notes_content += "\n**List of Jira Epics**\n"
@@ -233,8 +258,8 @@ def get_release_notes(name, version, epic_set,
         for epic_fields in sorted(epic_set):
             epic_key = epic_fields[0]
             epic_title = epic_fields[1]
-            epic_description = epic_fields[2] if len(epic_fields) >2 and epic_fields[2] else "No description provided"
-            epic_status = epic_fields[3] if len(epic_fields) > 3 and epic_fields[3] else "No status provided" 
+            epic_description = epic_fields[2] if len(epic_fields) > 2 and epic_fields[2] else "No description provided"
+            epic_status = epic_fields[3] if len(epic_fields) > 3 and epic_fields[3] else "No status provided"
             pr_numbers = pr_mapping.get(epic_key, [])
             pr_list = ', '.join(pr_numbers) if pr_numbers else "N/A"
             notes_content += f"* {epic_key}: {epic_title} (Status: {epic_status}): "
@@ -442,6 +467,8 @@ def release_notes(parsed_args):
         notes = "# CARMA System Release Notes\n"
         notes += f"\nVersion {parsed_args.version}, released TBD\n"
         notes += "\n---\n"
+        notes += "\n### Summary\n"
+
         for section_title in ["Changes to Key Existing Repositories", "Other Existing Repositories", "Private Repositories"]:
             if not sections[section_title]:
                 continue
