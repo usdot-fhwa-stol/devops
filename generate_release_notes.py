@@ -33,28 +33,27 @@ def get_repo_group(repo_name):
     else:
         return "Other Existing Repositories"
 
+import csv
+import os
+
 def format_repo_name(repo_name):
     """
-    Convert raw repo names to formatted display names for release notes compared with previous release.
+    Convert raw repo names to formatted display names for release notes.
+    Uses 'repo_name_map.csv' if available, otherwise falls back to default formatting.
     """
-    name_map = {
-        "carma-platform": "CARMA Platform", "carma-cloud": "CARMA Cloud", "carma-streets": "CARMA Streets",
-        "carma-messenger": "CARMA Messenger", "carma-messenger-bridge": "CARMA Messenger Bridge",
-        "carma-config": "CARMA Config", "carma-base": "CARMA Base", "carma-utils": "CARMA Utils",
-        "carma-msgs": "CARMA Msgs", "carma-lightbar-driver": "CARMA Lightbar Driver",
-        "carma-velodyne-lidar-driver": "CARMA Velodyne Lidar Driver",
-        "carma-novatel-oem-driver-wrapper": "CARMA Novatel OEM7 Driver Wrapper",
-        "carma-ssc-interface-wrapper": "CARMA SSC Interface Wrapper",
-        "carma-torc-pinpoint-driver": "CARMA Torc Pinpoint Driver", "carma-vehicle-calibration": "CARMA Vehicle Calibration",
-        "carma-analytics-fotda": "CARMA Analytics FOTDA", "carma-ns3-adapter": "CARMA NS3 Adapter",
-        "cdasim": "CDASim", "cda-telematics": "CDA Telematics",
-        "v2x-ros-driver": "V2X ROS Driver", "v2x-ros-conversion": "V2X ROS Conversion",
-        "stol-j2735": "STOL J2735", "autoware.auto": "Autoware.Auto", "autoware.ai": "Autoware.ai",
-        "ros1_bridge": "Ros1_bridge", "navigation2_extensions": "Navigation2 Extensions",
-        "navigation2": "Navigation2", "twist_to_ackermann": "Twist To Ackermann", "vesc": "VESC",
-        "c1t_bringup": "C1T Bringup", "c1t2x-emulator": "C1T2X Emulator",
-        "v2x-hub": "V2X Hub", "carma-web-ui": "CARMA Web UI"
-    }
+    name_map = {}
+    csv_file = os.path.join(os.path.dirname(__file__), "repo_name_map.csv")
+
+    if os.path.exists(csv_file):
+        try:
+            with open(csv_file, newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("repo_name") and row.get("display_name"):
+                        name_map[row["repo_name"].strip().lower()] = row["display_name"].strip()
+        except Exception as e:
+            logging.warning(f"Could not read repo_name_map.csv ({e})")
+
     lower = repo_name.lower()
     return name_map.get(lower, " ".join(word.capitalize() for word in lower.replace("_", "-").split("-")))
 
@@ -428,9 +427,11 @@ def release_notes(parsed_args):
                                             if isinstance(desc, dict) and 'content' in desc:
                                                 cleaned = []
                                                 for block in desc.get('content', []):
+                                                    if not block or 'content' not in block:
+                                                        continue
                                                     if block['type'] == 'paragraph':
                                                         paragraph_text = " ".join(
-                                                            [item.get('text', '') for item in block.get('content', []) if item.get('type') == 'text']
+                                                            [item.get('text', '') for item in block.get('content', []) if item and item.get('type') == 'text']
                                                         )
                                                         cleaned.append(paragraph_text)
                                                 desc = "\n".join(cleaned) if cleaned else 'No description available'
