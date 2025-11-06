@@ -1,0 +1,34 @@
+repo_name,display_name
+carma-platform,CARMA Platform
+carma-cloud,CARMA Cloud
+carma-streets,CARMA Streets
+carma-messenger,CARMA Messenger
+carma-messenger-bridge,CARMA Messenger Bridge
+carma-config,CARMA Config
+carma-base,CARMA Base
+carma-utils,CARMA Utils
+carma-msgs,CARMA Msgs
+carma-lightbar-driver,CARMA Lightbar Driver
+carma-velodyne-lidar-driver,CARMA Velodyne Lidar Driver
+carma-novatel-oem-driver-wrapper,CARMA Novatel OEM7 Driver Wrapper
+carma-ssc-interface-wrapper,CARMA SSC Interface Wrapper
+carma-torc-pinpoint-driver,CARMA Torc Pinpoint Driver
+carma-vehicle-calibration,CARMA Vehicle Calibration
+carma-analytics-fotda,CARMA Analytics FOTDA
+carma-ns3-adapter,CARMA NS3 Adapter
+cdasim,CDASim
+cda-telematics,CDA Telematics
+v2x-ros-driver,V2X ROS Driver
+v2x-ros-conversion,V2X ROS Conversion
+stol-j2735,STOL J2735
+autoware.auto,Autoware.Auto
+autoware.ai,Autoware.ai
+ros1_bridge,Ros1_bridge
+navigation2_extensions,Navigation2 Extensions
+navigation2,Navigation2
+twist_to_ackermann,Twist To Ackermann
+vesc,VESC
+c1t_bringup,C1T Bringup
+c1t2x-emulator,C1T2X Emulator
+v2x-hub,V2X Hub
+carma-web-ui,CARMA Web UI

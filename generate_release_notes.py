@@ -17,6 +17,58 @@ from github import Github, GithubException
 skipped_repos = []
 skipped_prs = []
 
+# Grouping definitions for release notes
+KEY_EXISTING_REPOS = {"carma-platform", "carma-messenger", "carma-cloud"}
+PRIVATE_REPOS = {"carma-vehicle-calibration", "stol-j2735"}
+
+def get_repo_group(repo_name):
+    """
+    Determine which section the repository belongs to.
+    """
+    lower = repo_name.lower()
+    if lower in KEY_EXISTING_REPOS:
+        return "Changes to Key Existing Repositories"
+    elif lower in PRIVATE_REPOS:
+        return "Private Repositories"
+    else:
+        return "Other Existing Repositories"
+
+import csv
+import os
+
+def format_repo_name(repo_name):
+    """
+    Convert raw repo names to formatted display names for release notes.
+    Uses 'repo_name_map.csv' if available, otherwise falls back to default formatting.
+    """
+    name_map = {}
+    csv_file = os.path.join(os.path.dirname(__file__), "repo_name_map.csv")
+
+    if os.path.exists(csv_file):
+        try:
+            with open(csv_file, newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get("repo_name") and row.get("display_name"):
+                        name_map[row["repo_name"].strip().lower()] = row["display_name"].strip()
+        except Exception as e:
+            logging.warning(f"Could not read repo_name_map.csv ({e})")
+
+    lower = repo_name.lower()
+    return name_map.get(lower, " ".join(word.capitalize() for word in lower.replace("_", "-").split("-")))
+
+def is_trivial_pr(title):
+    """
+    Return True if the PR title is with internal PRs(Like release process,GitHub Bot,etc) and should be skipped from release notes.
+    """
+    trivial_phrases = [
+        "merge release", "merge master", "merge develop",
+        "sync master", "sync develop", "update .env",
+        "bump actions/checkout", "bump version", "dependabot"
+    ]
+    t = title.lower()
+    return any(p in t for p in trivial_phrases)
+
 def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
     """
     Function to get Jira issue details based on the Jira key.
@@ -197,7 +249,7 @@ def get_release_notes(name, version, epic_set,
     Returns:
         str: Formatted release notes in markdown.
     """
-    notes_content = f"\n\n## {name} - {version}\n"
+    notes_content = f"\n\n## {format_repo_name(name)}\n"
 
     # List of Jira Epics
     notes_content += "\n**List of Jira Epics**\n"
@@ -205,12 +257,12 @@ def get_release_notes(name, version, epic_set,
         for epic_fields in sorted(epic_set):
             epic_key = epic_fields[0]
             epic_title = epic_fields[1]
-            epic_description = epic_fields[2] if len(epic_fields) >2 and epic_fields[2] else "No description provided"
-            epic_status = epic_fields[3] if len(epic_fields) > 3 and epic_fields[3] else "No status provided" 
+            epic_description = epic_fields[2] if len(epic_fields) > 2 and epic_fields[2] else "No description provided"
+            epic_status = epic_fields[3] if len(epic_fields) > 3 and epic_fields[3] else "No status provided"
             pr_numbers = pr_mapping.get(epic_key, [])
             pr_list = ', '.join(pr_numbers) if pr_numbers else "N/A"
             notes_content += f"* {epic_key}: {epic_title} (Status: {epic_status}): "
-            notes_content += f"{epic_description}. (GitHub PRs {pr_list})\n"
+            notes_content += f"{epic_description}.\n  - Pull Requests: {pr_list}\n"
 
     else:
         notes_content += "No Jira epics found\n"
@@ -297,8 +349,13 @@ def release_notes(parsed_args):
         logging.error("%s", error)
         sys.exit(1)
 
+    sections = {
+        "Changes to Key Existing Repositories": [],
+        "Other Existing Repositories": [],
+        "Private Repositories": [],
+    }
+
     try:
-        notes = "# Releases"
         for org in parsed_args.organizations:
             for github_repo in get_repo_list(org, github):
                 logging.info("Processing %s", github_repo)
@@ -348,6 +405,13 @@ def release_notes(parsed_args):
                             # Only process PRs that are closed and merged
                             if pr.state != "closed" or not pr.merged:
                                 continue
+                            if pr.draft:
+                                logging.info(f"Skipping draft PR: {pr.title}")
+                                continue
+                            # Skip trivial PRs that add no release-note value
+                            if is_trivial_pr(pr.title):
+                                logging.info(f"Skipping trivial PR:{pr.title}")
+                                continue    
                             jira_keys, pr_github_issues = get_issues_from_pr(repo, pr.number)
                             if jira_keys:
                                 for jira_key in jira_keys:
@@ -359,8 +423,19 @@ def release_notes(parsed_args):
                                             epic_set.add((epic_key,epic_title, epic_description, epic_status))
                                             pr_mapping.setdefault(epic_key, []).append(f"[{repo.name} PR #{pr.number}]({repo.html_url}/pull/{pr.number})")
                                         else:
-                                            issue_titles_other.append(
-                                                f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']}) - Epic missing"
+                                            desc = jira_issue['fields'].get('description', 'No description provided')
+                                            if isinstance(desc, dict) and 'content' in desc:
+                                                cleaned = []
+                                                for block in desc.get('content', []):
+                                                    if not block or 'content' not in block:
+                                                        continue
+                                                    if block['type'] == 'paragraph':
+                                                        paragraph_text = " ".join(
+                                                            [item.get('text', '') for item in block.get('content', []) if item and item.get('type') == 'text']
+                                                        )
+                                                        cleaned.append(paragraph_text)
+                                                desc = "\n".join(cleaned) if cleaned else 'No description available'
+                                            issue_titles_other.append(f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']})\n  - Description: {desc} - Epic missing"
                                             )
 
                             elif pr_github_issues:
@@ -372,10 +447,13 @@ def release_notes(parsed_args):
                             logging.error("Error processing PR #%d for repo %s: %s", pr.number, repo.name, error)
                             skipped_prs.append(f"PR #{pr.number} in repo {repo.name} failed to process")
 
-                notes += get_release_notes(
+                repo_group = get_repo_group(repo.name)
+                repo_notes = get_release_notes(
                     repo.name, parsed_args.version, epic_set,
                     issue_titles_other, github_issues, pull_requests_missing_epics, commit_only, pr_mapping
                 )
+                sections[repo_group].append(repo_notes)
+
                 open_prs = []
                 for pr in repo.get_pulls(state="open"):
                     try:
@@ -384,8 +462,19 @@ def release_notes(parsed_args):
                     except GithubException:
                         continue
                 if open_prs:
-                    notes += "\n**Open PRs targeting release branch (excluded)**\n" + "\n".join(open_prs) + "\n"
+                    sections[repo_group].append("\n**Open PRs targeting release branch (excluded)**\n" + "\n".join(open_prs) + "\n")
                 logging.info("Generated release note for repo: %s", github_repo)
+
+        notes = "# CARMA System Release Notes\n"
+        notes += f"\nVersion {parsed_args.version}, released TBD\n"
+        notes += "\n---\n"
+        notes += "\n### Summary\n"
+
+        for section_title in ["Changes to Key Existing Repositories", "Other Existing Repositories", "Private Repositories"]:
+            if not sections[section_title]:
+                continue
+            notes += f"\n## {section_title}\n"
+            notes += "\n".join(sections[section_title])
 
         if skipped_repos:
             notes += "\n\n**Skipped Repositories**\n"
