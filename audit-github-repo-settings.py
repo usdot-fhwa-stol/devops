@@ -435,7 +435,6 @@ def open_github_issue(errors_dict, github_token, org):
                                 issue.number,
                             )
                         )
-                        # Try to avoid API rate limit
                         time.sleep(15)
                     except Exception as e:
                         logging.error("Failed to create GitHub issue\n" + str(e))
