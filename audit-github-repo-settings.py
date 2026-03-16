@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-from github import Github
+from github import Github, Auth
 import argparse
-import json
 import logging
 import os
 import pathlib
@@ -13,24 +12,72 @@ green = "✅ \033[92m"
 red = "❌ \033[91m"
 yellow = "⚠️  \033[93m"
 
+# Repos where default branch is allowed to NOT be "develop".
+DEFAULT_BRANCH_EXEMPT = [
+    "usdot-fhwa-stol/usdot-asn1c",
+    "usdot-fhwa-stol/autoware.ai",
+    "usdot-fhwa-stol/navigation2",
+    "usdot-fhwa-stol/rosbridge_suite",
+    "usdot-fhwa-stol/tracetools_analysis",
+    "usdot-fhwa-stol/docs.nav2.org",
+    "usdot-fhwa-stol/rosbag2",
+    "usdot-fhwa-stol/cda-mmitss",
+    "usdot-fhwa-stol/intersection-safety-challenge",
+    "usdot-fhwa-stol/To-21-426-multivariate-piecewise-linear-ACC-car-following-model",
+    "usdot-fhwa-stol/5G-MEC-testing",
+    "usdot-fhwa-stol/To-21-426-modeling-HV-interactions-with-inconspicuous-ACC-equipped-vehicles",
+    "usdot-fhwa-stol/robot_localization",
+    "usdot-fhwa-stol/asn-code-gen",
+    "usdot-fhwa-stol/DOT-V2X-Fieldtest-Data",
+    "usdot-fhwa-stol/carma_ament_lint",
+    "usdot-fhwa-stol/ros2_tracing",
+    "usdot-fhwa-stol/novatel_oem7_driver",
+    "usdot-fhwa-stol/voices-cda-use-case-scenario-database",
+    "usdot-fhwa-stol/sumo",
+    "usdot-fhwa-stol/mosaic",
+    "usdot-fhwa-stol/cda-simulation-twg",
+    "usdot-fhwa-stol/CARMAConcept",
+    "usdot-fhwa-stol/CARMAConceptOld",
+    "usdot-fhwa-stol/glidepath-ead",
+    "usdot-fhwa-ops/v2xhub-angular-ui-prototype",
+    "usdot-fhwa-ops/libwebsockets",
+    "usdot-jpo-ode/j2735-ffm-java",
+    "usdot-jpo-ode/actions",
+    "usdot-jpo-ode/scms-asn1",
+    "usdot-jpo-ode/TDx",
+    "usdot-jpo-ode/jpo-cvportal",
+    "usdot-jpo-ode/usdot-jpo-ode.github.io",
+    "usdot-jpo-ode/jpo-record-parser",
+    "usdot-jpo-ode/jpo-security",
+    "usdot-jpo-ode/jpo-ode-scms-asn",
+    "usdot-jpo-ode/Pikalert-Vehicle-Data-Translator-",
+]
+
 
 def get_github_json(url, token):
     headers = {
         "Authorization": "token " + token,
         "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
     }
     try:
-        request = requests.get(
-            url,
-            headers=headers,
+        resp = requests.get(url, headers=headers, timeout=30)
+    except requests.RequestException as e:
+        logging.error(red + "request failed: " + url + f" ({e})")
+        return None
+
+    if not resp.ok:
+        logging.warning(
+            yellow
+            + f"GitHub API returned {resp.status_code} for {url}. Body: {resp.text[:250]}"
         )
-    except:
-        logging.error(red + "request failed: " + url)
-        exit()
+        return None
 
-    request_json = json.loads(request.text)
-
-    return request_json
+    try:
+        return resp.json()
+    except ValueError:
+        logging.warning(yellow + f"Invalid JSON response for {url}. Body: {resp.text[:250]}")
+        return None
 
 
 def get_repo_list(github_org, github):
@@ -56,6 +103,17 @@ def is_branch(branch, repo):
 
     return branch_exists
 
+def _enabled(obj):
+    """
+    allow_* fields can be:
+      - {"enabled": true/false}
+      - missing
+    """
+    if isinstance(obj, dict):
+        return obj.get("enabled")
+    if isinstance(obj, bool):
+        return obj
+    return None
 
 def tests(github_branch, repo, token):
     repo = github.get_repo(repo)
@@ -72,20 +130,26 @@ def tests(github_branch, repo, token):
         repo_dict[repo.name][branch.name] = {}
         repo_dict[repo.name][branch.name]["branch-errors"] = {}
 
-        if test_repo_default_branch(repo):
-            logging.info(green + repo.name + ': "Default branch" is "develop"')
+        # Default branch enforcement ONLY if develop branch exists
+        if is_branch("develop", repo):
+            # Skip default-branch enforcement for exempt repos
+            if repo.full_name in DEFAULT_BRANCH_EXEMPT:
+                logging.info(yellow + repo.full_name + ": default-branch exempt; skipping default-branch check")
+            else:
+                if test_repo_default_branch(repo):
+                    logging.info(green + repo.name + ': "Default branch" is "develop"')
+                else:
+                    message_fail = '"Default branch" is not "develop"!'
+                    branch_errors = branch_errors + [message_fail]
+                    logging.error(red + repo.full_name + ": " + message_fail)
         else:
-            message_fail = '"Default branch" is not "develop"!'
-            branch_errors = branch_errors + [message_fail]
-            logging.error(red + repo.name + ": " + message_fail)
+            logging.info(green + repo.full_name + ": develop branch not present; skipping default-branch check")
     else:
         logging.warning(yellow + msg + "branch does not exist, skipping it")
         return
 
     # Test .github/workflows existence
-    if branch.name == "develop" and test_branch_contains(
-        repo, branch.name, ".github/workflows"
-    ):
+    if branch.name == "develop" and test_branch_contains(repo, branch.name, ".github/workflows"):
         # Test dependabot.yml existence
         if test_branch_contains(repo, branch.name, ".github/dependabot.yml"):
             logging.info(green + msg + "Branch contains .github/dependabot.yml")
@@ -98,12 +162,8 @@ def tests(github_branch, repo, token):
     # Test Markdown template existence
     templates = ["docs/ISSUE_TEMPLATE.md", "docs/PULL_REQUEST_TEMPLATE.md"]
     for template in templates:
-        if branch.name == "develop" and test_branch_contains(
-            repo, branch.name, template
-        ):
-            message_fail = (
-                "Branch contains " + template + " instead of YAML-based template"
-            )
+        if branch.name == "develop" and test_branch_contains(repo, branch.name, template):
+            message_fail = "Branch contains " + template + " instead of YAML-based template"
             # FIXME: change to fatal error in the future
             # branch_errors = branch_errors + [message_fail]
             logging.warning(yellow + msg + message_fail)
@@ -145,13 +205,8 @@ def tests(github_branch, repo, token):
             logging.error(red + msg + message_fail)
 
         # "Required number of approvals before merging"
-        if (
-            branch.get_required_pull_request_reviews().required_approving_review_count
-            >= 1
-        ):
-            logging.info(
-                green + msg + '"Required number of approvals before merging" >= 1'
-            )
+        if branch.get_required_pull_request_reviews().required_approving_review_count >= 1:
+            logging.info(green + msg + '"Required number of approvals before merging" >= 1')
         else:
             message_fail = '"Required number of approvals before merging" < 1!'
             branch_errors = branch_errors + [message_fail]
@@ -159,11 +214,7 @@ def tests(github_branch, repo, token):
 
         # "Dismiss stale pull request approvals when new commits are pushed"
         if branch.get_required_pull_request_reviews().dismiss_stale_reviews:
-            logging.info(
-                green
-                + msg
-                + '"Dismiss stale pull request approvals when new commits are pushed" enabled'
-            )
+            logging.info(green + msg + '"Dismiss stale pull request approvals when new commits are pushed" enabled')
         else:
             message_fail = '"Dismiss stale pull request approvals when new commits are pushed" disabled'
             branch_errors = branch_errors + [message_fail]
@@ -171,9 +222,7 @@ def tests(github_branch, repo, token):
 
         # "Do not allow bypassing the above settings"
         if test_branch_admin_enforcement(branch, msg):
-            logging.info(
-                green + msg + '"Do not allow bypassing the above settings" enabled'
-            )
+            logging.info(green + msg + '"Do not allow bypassing the above settings" enabled')
         else:
             message_fail = '"Do not allow bypassing the above settings" disabled!'
             branch_errors = branch_errors + [message_fail]
@@ -189,25 +238,23 @@ def tests(github_branch, repo, token):
         elif org == "usdot-fhwa-ops":
             admin_teams = ["V2X-Hub Admins"]
             dev_teams = ["V2X-Hub Team"]
-        if test_branch_push_restrictions(admin_teams, branch, dev_teams, org):
-            if branch.name in ["main", "master"]:
-                message_pass = (
-                    green
-                    + msg
-                    + '"Restrict who can push to matching branches" set to ' + ", ".join(admin_teams)
-                )
+
+        if test_branch_push_restrictions(repo, admin_teams, branch, dev_teams, org):
+            if repo.private:
+                logging.info(green + msg + '"Restrict who can push to matching branches" enabled (private repo: team names not enforced)')
             else:
-                message_pass = (
-                    green
-                    + msg
-                    + '"Restrict who can push to matching branches" set to ' + ", ".join(dev_teams)
-                )
-            logging.info(message_pass)
+                if branch.name in ["main", "master"]:
+                    logging.info(green + msg + '"Restrict who can push to matching branches" set to ' + ", ".join(admin_teams))
+                else:
+                    logging.info(green + msg + '"Restrict who can push to matching branches" set to ' + ", ".join(dev_teams))
         else:
-            if branch.name in ["main", "master"]:
-                message_fail = '"Restrict who can push to matching branches" not set to ' + ", ".join(admin_teams)
+            if repo.private:
+                message_fail = '"Restrict who can push to matching branches" is not enabled (no team restriction set)'
             else:
-                message_fail = '"Restrict who can push to matching branches" not set to ' + ", ".join(dev_teams)
+                if branch.name in ["main", "master"]:
+                    message_fail = '"Restrict who can push to matching branches" not set to ' + ", ".join(admin_teams)
+                else:
+                    message_fail = '"Restrict who can push to matching branches" not set to ' + ", ".join(dev_teams)
             branch_errors = branch_errors + [message_fail]
             logging.error(red + msg + message_fail)
     else:
@@ -229,16 +276,18 @@ def test_branch_admin_enforcement(branch, msg):
 # "Require status checks before merging"
 def test_branch_require_status_checks(branch, token):
     try:
-        get_github_json(branch.get_required_status_checks().url, token)
-        return True
+        data = get_github_json(branch.get_required_status_checks().url, token)
+        return data is not None
     except:
         return False
 
 # "Status checks that are required"
 def test_branch_status_checks_ci(branch, token, ci_name):
     status_checks_json = get_github_json(branch.get_required_status_checks().url, token)
+    if not status_checks_json:
+        return False
 
-    ci_list = status_checks_json["contexts"]
+    ci_list = status_checks_json.get("contexts", [])
     if ci_name in ci_list:
         return True
     else:
@@ -247,25 +296,33 @@ def test_branch_status_checks_ci(branch, token, ci_name):
 # "Allow deletions"
 def test_branch_allow_deletions(branch, token):
     protection_json = get_github_json(branch.get_protection().url, token)
+    if not protection_json:
+        return True  # skip/assume pass if we can't read protection
 
-    if protection_json["allow_deletions"]["enabled"]:
-        return False
-    else:
-        return True
+    enabled = _enabled(protection_json.get("allow_deletions"))
+    if enabled is None:
+        return True  # field missing -> skip/assume pass
+
+    return not enabled
 
 
 # "Allow force pushes"
 def test_branch_allow_force_pushes(branch, token):
     protection_json = get_github_json(branch.get_protection().url, token)
+    if not protection_json:
+        return True  # skip/assume pass if we can't read protection
 
-    if protection_json["allow_force_pushes"]["enabled"]:
-        return False
-    else:
-        return True
+    enabled = _enabled(protection_json.get("allow_force_pushes"))
+    if enabled is None:
+        return True  # field missing -> skip/assume pass
+
+    return not enabled
 
 
 # "Restrict who can push to matching branches"
-def test_branch_push_restrictions(admin_teams, branch, dev_teams, org):
+def test_branch_push_restrictions(repo, admin_teams, branch, dev_teams, org):
+    # For private repos, allow repo-specific teams: just require that some restriction exists.
+    enforce_exact_teams = not repo.private
 
     if branch.name in ["main", "master"]:
         team_names = admin_teams
@@ -273,16 +330,20 @@ def test_branch_push_restrictions(admin_teams, branch, dev_teams, org):
         team_names = dev_teams
 
     try:
-        if len(list(branch.get_team_push_restrictions())) >= 1:
-            github_team_names = []
-            for team in branch.get_team_push_restrictions():
-                github_team_names = github_team_names + [team.name]
+        teams = list(branch.get_team_push_restrictions())
+        if len(teams) < 1:
+            return False
 
-            for team in team_names:
-                if team not in github_team_names:
-                    return False
-
+        if not enforce_exact_teams:
             return True
+
+        github_team_names = [t.name for t in teams]
+
+        for team in team_names:
+            if team not in github_team_names:
+                return False
+
+        return True
     except:
         return False
 
@@ -291,6 +352,8 @@ def test_branch_require_pull_requests(branch, token):
     bypass_users = ["kjrush"]
 
     protection_json = get_github_json(branch.get_protection().url, token)
+    if not protection_json:
+        return False
 
     try:
         github_bypass_json = protection_json["required_pull_request_reviews"][
@@ -367,7 +430,7 @@ def is_blacklisted_repo(github_repo):
         "usdot-fhwa-stol/c1t_rplidar_driver",
         "usdot-fhwa-stol/temp_test_repo",
         "usdot-jpo-ode/jpo-security",
-        "usdot-jpo-ode/jpo-tim-builder"
+        "usdot-jpo-ode/jpo-tim-builder",
         "usdot-jpo-ode/wzdx",
         "usdot-jpo-ode/wzdc-tool",
         "usdot-jpo-ode/TDx",
@@ -377,8 +440,7 @@ def is_blacklisted_repo(github_repo):
         "usdot-jpo-ode/Pikalert-Vehicle-Data-Translator-",
         "usdot-fhwa-ops/sample_angular_saml_app",
         "usdot-fhwa-ops/.github",
-        "usdot-fhwa-ops/libwebsockets"
-
+        "usdot-fhwa-ops/libwebsockets",
     ]
 
     if github_repo in blacklist:
@@ -389,15 +451,16 @@ def is_blacklisted_repo(github_repo):
 
 def open_github_issue(errors_dict, github_token, org):
     issue_repo = os.environ["GITHUB_REPOSITORY"]
-    github = Github(github_token)
+    github = Github(auth=Auth.Token(github_token))
     repo = github.get_repo(issue_repo)
 
-    def github_issue_exists(title):
-        open_issues = repo.get_issues(state="open")
-        for issue in open_issues:
+    # Prevent duplicates even if issues are closed: find in state="all", reopen + update.
+    def find_issue_by_title(title):
+        issues = repo.get_issues(state="all")
+        for issue in issues:
             if issue.title == title:
-                return True
-        return False
+                return issue
+        return None
 
     for github_repo in errors_dict:
         for branch in errors_dict[github_repo]:
@@ -406,39 +469,50 @@ def open_github_issue(errors_dict, github_token, org):
                     "GitHub repository settings misconfigured: %s/%s %s branch"
                     % (org, github_repo, branch)
                 )
-                if not github_issue_exists(issue_title):
-                    settings_url = (
-                        "https://github.com/" + org + "/" + github_repo + "/settings"
-                    )
-                    issue_body = "### Component\n\nInfrastructure\n\n### Specifics\n\n- [ ] CircleCI\n- [ ] Docker or Docker Hub\n- [ ] Doxygen\n- [ ] GitHub Actions\n- [X] GitHub branch or repo\n- [ ] Sonar\n\n### What happened?\n\n"
-                    issue_body = issue_body + (
-                        "The following ["
-                        + org
-                        + "/"
-                        + github_repo
-                        + " settings]("
-                        + settings_url
-                        + ") are misconfigured:"
-                        + "\n- [ ] "
-                        + "\n- [ ] ".join(
-                            errors_dict[github_repo][branch]["branch-errors"]
+
+                settings_url = "https://github.com/" + org + "/" + github_repo + "/settings"
+
+                issue_body = ( "### Component\n\nInfrastructure\n\n### Specifics\n\n"
+                    "- [ ] Docker or Docker Hub\n"
+                    "- [ ] Doxygen\n"
+                    "- [ ] GitHub Actions\n"
+                    "- [X] GitHub branch or repo\n"
+                    "- [ ] Sonar\n\n"
+                    "### What happened?\n\n"
+                )
+                issue_body = issue_body + (
+                    "The following ["
+                    + org
+                    + "/"
+                    + github_repo
+                    + " settings]("
+                    + settings_url
+                    + ") are misconfigured:"
+                    + "\n- [ ] "
+                    + "\n- [ ] ".join(errors_dict[github_repo][branch]["branch-errors"])
+                )
+
+                existing = find_issue_by_title(issue_title)
+                try:
+                    if existing:
+                        if existing.state == "closed":
+                            existing.edit(state="open")
+                        existing.edit(body=issue_body)
+                        print(
+                            "GitHub repository settings misconfigured: %s/%s %s branch - Updated issue %d"
+                            % (org, github_repo, branch, existing.number)
                         )
-                    )
-                    try:
+                        time.sleep(2)
+                    else:
                         issue = repo.create_issue(title=issue_title, body=issue_body)
                         print(
                             "GitHub repository settings misconfigured: %s/%s %s branch - Created issue %d"
-                            % (
-                                org,
-                                github_repo,
-                                branch,
-                                issue.number,
-                            )
+                            % (org, github_repo, branch, issue.number)
                         )
                         time.sleep(15)
-                    except Exception as e:
-                        logging.error("Failed to create GitHub issue\n" + str(e))
-                        exit(1)
+                except Exception as e:
+                    logging.error("Failed to create/update GitHub issue\n" + str(e))
+                    exit(1)
 
 def check_branch_protection_graphql(owner, repo_name, token):
     """
@@ -446,10 +520,7 @@ def check_branch_protection_graphql(owner, repo_name, token):
     Returns a list of patterns, or None on error.
     """
     url = "https://api.github.com/graphql"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     query = """
     query($owner: String!, $repo: String!) {
       repository(owner: $owner, name: $repo) {
@@ -461,12 +532,9 @@ def check_branch_protection_graphql(owner, repo_name, token):
       }
     }
     """
-    variables = {
-        "owner": owner,
-        "repo": repo_name
-    }
+    variables = {"owner": owner, "repo": repo_name}
     try:
-        response = requests.post(url, json={'query': query, 'variables': variables}, headers=headers)
+        response = requests.post(url, json={"query": query, "variables": variables}, headers=headers, timeout=30)
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         logging.error(f"GraphQL query failed for {owner}/{repo_name}: {str(e)}")
@@ -478,11 +546,13 @@ def check_branch_protection_graphql(owner, repo_name, token):
         logging.error(f"Invalid JSON response for {owner}/{repo_name}")
         return None
 
-    if ('data' not in data or
-        'repository' not in data['data'] or
-        data['data']['repository'] is None or
-        'branchProtectionRules' not in data['data']['repository'] or
-        data['data']['repository']['branchProtectionRules'] is None):
+    if (
+        ("data" not in data)
+        or ("repository" not in data["data"])
+        or (data["data"]["repository"] is None)
+        or ("branchProtectionRules" not in data["data"]["repository"])
+        or (data["data"]["repository"]["branchProtectionRules"] is None)
+    ):
         logging.error(f"Failed to fetch branch protection rules for {owner}/{repo_name}. No data returned.")
         return None
 
@@ -499,7 +569,7 @@ def check_hotfix_release_rules(full_repo_name, token):
     If missing, returns a dict with 'branch-errors'.
     Otherwise returns an empty dict.
     """
-    parts = full_repo_name.split('/', 1)
+    parts = full_repo_name.split("/", 1)
     if len(parts) != 2:
         logging.error(f"Invalid repo name format: {full_repo_name}")
         return {"branch-errors": [f"Invalid repo name format: {full_repo_name}"]}
@@ -537,7 +607,7 @@ if __name__ == "__main__":
     )
 
     try:
-        github = Github(args.github_token)
+        github = Github(auth=Auth.Token(args.github_token))
     except Exception as e:
         logging.error(e)
         exit()
@@ -548,14 +618,11 @@ if __name__ == "__main__":
                 if not is_blacklisted_repo(org + "/" + github_repo_name):
                     repo = get_repo(org + "/" + github_repo_name, github)
                     if repo.archived:
-                        logging.warning(
-                            yellow + github_repo_name + ": archived repository, skipping it"
-                        )
+                        logging.warning(yellow + github_repo_name + ": archived repository, skipping it")
                     else:
                         for branch in args.branches:
-                            errors_dict = tests(
-                                branch, org + "/" + github_repo_name, args.github_token
-                            )
+                            errors_dict = tests(branch, org + "/" + github_repo_name, args.github_token)
+
                             # If no errors dict returned, skip
                             if not errors_dict:
                                 errors_dict = {}
@@ -563,10 +630,10 @@ if __name__ == "__main__":
                             # Check for hotfix/*, release/* rules
                             hotfix_release_errors = check_hotfix_release_rules(org + "/" + github_repo_name, args.github_token)
                             if hotfix_release_errors:
-                                # Put them under the repo name in the same structure
-                                if org + "/" + github_repo_name not in errors_dict:
-                                    errors_dict[org + "/" + github_repo_name] = {}
-                                errors_dict[org + "/" + github_repo_name]["hotfix_release_rules"] = {
+                                # Keep same key style as tests() also which fix double-org links in Issue body
+                                if github_repo_name not in errors_dict:
+                                    errors_dict[github_repo_name] = {}
+                                errors_dict[github_repo_name]["hotfix_release_rules"] = {
                                     "branch-errors": hotfix_release_errors["branch-errors"]
                                 }
 
