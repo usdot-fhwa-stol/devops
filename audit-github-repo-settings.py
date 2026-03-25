@@ -61,23 +61,22 @@ def get_github_json(url, token):
         "X-GitHub-Api-Version": "2022-11-28",
     }
     try:
-        resp = requests.get(url, headers=headers, timeout=30)
+        resp = requests.get(url, headers=headers, timeout=180)
     except requests.RequestException as e:
         logging.error(red + "request failed: " + url + f" ({e})")
-        return None
+        exit(1)
 
     if not resp.ok:
-        logging.warning(
-            yellow
-            + f"GitHub API returned {resp.status_code} for {url}. Body: {resp.text[:250]}"
+        logging.error(
+            red + f"GitHub API returned {resp.status_code} for {url}. Body: {resp.text[:250]}"
         )
-        return None
+        exit(1)
 
     try:
         return resp.json()
     except ValueError:
-        logging.warning(yellow + f"Invalid JSON response for {url}. Body: {resp.text[:250]}")
-        return None
+        logging.error(red + f"Invalid JSON response for {url}. Body: {resp.text[:250]}")
+        exit(1)
 
 
 def get_repo_list(github_org, github):
@@ -273,26 +272,6 @@ def test_branch_admin_enforcement(branch, msg):
     else:
         return False
 
-# "Require status checks before merging"
-def test_branch_require_status_checks(branch, token):
-    try:
-        data = get_github_json(branch.get_required_status_checks().url, token)
-        return data is not None
-    except:
-        return False
-
-# "Status checks that are required"
-def test_branch_status_checks_ci(branch, token, ci_name):
-    status_checks_json = get_github_json(branch.get_required_status_checks().url, token)
-    if not status_checks_json:
-        return False
-
-    ci_list = status_checks_json.get("contexts", [])
-    if ci_name in ci_list:
-        return True
-    else:
-        return False
-
 # "Allow deletions"
 def test_branch_allow_deletions(branch, token):
     protection_json = get_github_json(branch.get_protection().url, token)
@@ -309,15 +288,11 @@ def test_branch_allow_deletions(branch, token):
 # "Allow force pushes"
 def test_branch_allow_force_pushes(branch, token):
     protection_json = get_github_json(branch.get_protection().url, token)
-    if not protection_json:
-        return True  # skip/assume pass if we can't read protection
 
-    enabled = _enabled(protection_json.get("allow_force_pushes"))
-    if enabled is None:
-        return True  # field missing -> skip/assume pass
-
-    return not enabled
-
+    if protection_json["allow_force_pushes"]["enabled"]:
+        return False
+    else:
+        return True
 
 # "Restrict who can push to matching branches"
 def test_branch_push_restrictions(repo, admin_teams, branch, dev_teams, org):
