@@ -416,6 +416,7 @@ def is_blacklisted_repo(github_repo):
         "usdot-fhwa-ops/sample_angular_saml_app",
         "usdot-fhwa-ops/.github",
         "usdot-fhwa-ops/libwebsockets",
+        "usdot-fhwa-ops/github-access-review",
     ]
 
     if github_repo in blacklist:
