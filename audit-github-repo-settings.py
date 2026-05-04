@@ -412,10 +412,15 @@ def is_blacklisted_repo(github_repo):
         "usdot-jpo-ode/jpo-mec-deposit",
         "usdot-jpo-ode/jpo-cvportal",
         "usdot-jpo-ode/scms-asn1",
+        "usdot-jpo-ode/jpo-haas-asn1-bridge",
+        "usdot-jpo-ode/jpo-rtk-asn1-bridge",
+        "usdot-jpo-ode/github-access-review",
         "usdot-jpo-ode/Pikalert-Vehicle-Data-Translator-",
         "usdot-fhwa-ops/sample_angular_saml_app",
         "usdot-fhwa-ops/.github",
         "usdot-fhwa-ops/libwebsockets",
+        "usdot-fhwa-OPS/v2xhub-network-test",
+        "usdot-fhwa-ops/v2xhub-integration-tests"
         "usdot-fhwa-ops/github-access-review",
     ]
 
