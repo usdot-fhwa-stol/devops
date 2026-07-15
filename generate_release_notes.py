@@ -84,7 +84,7 @@ def get_jira_issue(issue_key, jira_url, jira_email, jira_token):
     """
     # Query parameter to restrict fields returned for issues. Without this parameter all fields are returned.
     fields="summary,issuetype,status,description,key,epic,parent"
-    url = f"{jira_url}/rest/api/3/issue/{issue_key}?fields={fields}"
+    url = f"{jira_url.rstrip('/')}/rest/api/3/issue/{issue_key}?fields={fields}"
     auth = (jira_email, jira_token)
     headers = {"Accept": "application/json"}
 
@@ -414,6 +414,7 @@ def release_notes(parsed_args):
                                 continue    
                             jira_keys, pr_github_issues = get_issues_from_pr(repo, pr.number)
                             if jira_keys:
+                                pr_recorded = False
                                 for jira_key in jira_keys:
                                     jira_issue = get_jira_issue(jira_key, parsed_args.jira_url, parsed_args.jira_email, parsed_args.jira_token)
                                     if jira_issue:
@@ -422,6 +423,7 @@ def release_notes(parsed_args):
                                         if epic_title:
                                             epic_set.add((epic_key,epic_title, epic_description, epic_status))
                                             pr_mapping.setdefault(epic_key, []).append(f"[{repo.name} PR #{pr.number}]({repo.html_url}/pull/{pr.number})")
+                                            pr_recorded = True
                                         else:
                                             desc = jira_issue['fields'].get('description', 'No description provided')
                                             if isinstance(desc, dict) and 'content' in desc:
@@ -437,6 +439,9 @@ def release_notes(parsed_args):
                                                 desc = "\n".join(cleaned) if cleaned else 'No description available'
                                             issue_titles_other.append(f"{jira_issue['fields']['summary'].strip()} (Jira {jira_issue['fields']['issuetype']['name']} : {jira_issue['key']})\n  - Description: {desc} - Epic missing"
                                             )
+                                            pr_recorded = True
+                                if not pr_recorded:
+                                    pull_requests_missing_epics.append(f"{pr.title.strip()} ([{repo.name} PR #{pr.number}]({pr.html_url}))")
 
                             elif pr_github_issues:
                                 github_issues.extend(pr_github_issues)
