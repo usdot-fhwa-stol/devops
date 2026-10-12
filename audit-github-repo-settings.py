@@ -430,9 +430,9 @@ def is_blacklisted_repo(github_repo):
     else:
         return False
 
-def open_github_issue(errors_dict, github_token, org):
+def open_github_issue(errors_dict, issue_token, org):
     issue_repo = os.environ["GITHUB_REPOSITORY"]
-    github = Github(auth=Auth.Token(github_token))
+    github = Github(auth=Auth.Token(issue_token))
     repo = github.get_repo(issue_repo)
 
     # Prevent duplicates even if issues are closed: find in state="all", reopen + update.
@@ -577,7 +577,11 @@ if __name__ == "__main__":
     parser.add_argument("--open-github-issues", action="store_true")
     parser.add_argument("--organizations", nargs="+", required=True)
     parser.add_argument("--github-token", required=True)
+    parser.add_argument("--issue-token", help="Token for reporting issues in GITHUB_REPOSITORY")
     args = parser.parse_args()
+
+    if args.open_github_issues and not args.issue_token:
+        parser.error("--issue-token is required with --open-github-issues")
 
     log = pathlib.Path("github-settings-scanner.log")
     log.unlink(missing_ok=True)
@@ -620,6 +624,6 @@ if __name__ == "__main__":
 
                             # If user wants to open issues and we have errors, do it
                             if args.open_github_issues and errors_dict:
-                                open_github_issue(errors_dict, args.github_token, org)
+                                open_github_issue(errors_dict, args.issue_token, org)
     except KeyboardInterrupt:
         exit()
