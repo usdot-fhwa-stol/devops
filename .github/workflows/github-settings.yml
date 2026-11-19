@@ -6,6 +6,10 @@ on:
     - cron: "0 8 1,15 * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,30 +30,42 @@ jobs:
 
       - name: Scan develop branches
         env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          AUDIT_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          ISSUE_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          set -euo pipefail
           ./audit-github-repo-settings.py \
             --branches develop \
-            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --github-token "$AUDIT_TOKEN" \
+            --issue-token "$ISSUE_TOKEN" \
             --open-github-issues \
             --organizations usdot-fhwa-stol usdot-fhwa-ops usdot-jpo-ode
 
       - name: Scan master branches
         env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          AUDIT_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          ISSUE_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          set -euo pipefail
           ./audit-github-repo-settings.py \
             --branches master \
-            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --github-token "$AUDIT_TOKEN" \
+            --issue-token "$ISSUE_TOKEN" \
             --open-github-issues \
             --organizations usdot-fhwa-stol usdot-fhwa-ops usdot-jpo-ode
 
       - name: Scan main branches
         env:
-          DEVOPS_GITHUB_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          AUDIT_TOKEN: ${{ secrets.DEVOPS_GITHUB_TOKEN }}
+          ISSUE_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
+          set -euo pipefail
           ./audit-github-repo-settings.py \
             --branches main \
-            --github-token "$DEVOPS_GITHUB_TOKEN" \
+            --github-token "$AUDIT_TOKEN" \
+            --issue-token "$ISSUE_TOKEN" \
             --open-github-issues \
             --organizations usdot-fhwa-stol usdot-fhwa-ops usdot-jpo-ode

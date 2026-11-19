@@ -24,10 +24,32 @@ on:
         description: 'Version number to use in release notes'
         required: true
         type: string
+permissions:
+  contents: read
+
 jobs:
   generate-release-notes:
     runs-on: ubuntu-latest
+    env:
+      INPUT_ORGANIZATION: ${{ inputs.organization }}
+      INPUT_RELEASE_BRANCH: ${{ inputs.release_branch }}
+      INPUT_STABLE_BRANCH: ${{ inputs.stable_branch }}
+      INPUT_VERSION: ${{ inputs.version }}
     steps:
+    - name: Validate inputs
+      shell: bash
+      run: |
+        set -euo pipefail
+        case "$INPUT_ORGANIZATION" in
+          usdot-fhwa-stol|usdot-fhwa-OPS|usdot-jpo-ode) ;;
+          *) echo "Invalid organization" >&2; exit 1 ;;
+        esac
+        git check-ref-format --branch "$INPUT_RELEASE_BRANCH"
+        git check-ref-format --branch "$INPUT_STABLE_BRANCH"
+        if [[ ! "$INPUT_VERSION" =~ ^[A-Za-z0-9._-]+$ || "$INPUT_VERSION" == *..* ]]; then
+          echo "Invalid version: use letters, digits, dots, underscores, or hyphens without '..'" >&2
+          exit 1
+        fi
     - uses: actions/checkout@v4
       with:
         fetch-depth: 1
@@ -44,14 +66,16 @@ jobs:
         STOL_JIRA_URL: ${{ secrets.STOL_JIRA_URL }}
         STOL_JIRA_EMAIL: ${{ secrets.STOL_JIRA_EMAIL }}
         STOL_JIRA_TOKEN: ${{ secrets.STOL_JIRA_TOKEN }}
+      shell: bash
       run: |
+        set -euo pipefail
         ./generate_release_notes.py \
           --github-token "$GITHUB_TOKEN" \
-          --organizations "${{ github.event.inputs.organization }}" \
-          --output-file "Release_Notes_${{ github.event.inputs.version }}.md" \
-          --release-branch "${{ github.event.inputs.release_branch }}" \
-          --stable-branch "${{ github.event.inputs.stable_branch }}" \
-          --version "${{ github.event.inputs.version }}" \
+          --organizations "$INPUT_ORGANIZATION" \
+          --output-file "Release_Notes_$INPUT_VERSION.md" \
+          --release-branch "$INPUT_RELEASE_BRANCH" \
+          --stable-branch "$INPUT_STABLE_BRANCH" \
+          --version "$INPUT_VERSION" \
           --jira-url "$STOL_JIRA_URL" \
           --jira-email "$STOL_JIRA_EMAIL" \
           --jira-token "$STOL_JIRA_TOKEN"
@@ -59,5 +83,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         if-no-files-found: error
-        name: Release_Notes_${{ github.event.inputs.version }}.md
-        path: Release_Notes_${{ github.event.inputs.version }}.md
+        name: Release_Notes_${{ inputs.version }}.md
+        path: Release_Notes_${{ inputs.version }}.md
